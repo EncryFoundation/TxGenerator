@@ -1,5 +1,5 @@
 name := "TxGenerator"
-version := "0.9.0"
+version := "0.1.0"
 organization := "org.encryfoundation"
 scalaVersion := "2.12.6"
 
@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
   "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
-
+  "org.encry" %% "encry-common" % "0.8.3"
 ) ++ loggingDependencies
 
 resolvers ++= Seq("Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/",
