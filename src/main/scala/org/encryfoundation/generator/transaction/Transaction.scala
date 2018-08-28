@@ -118,7 +118,7 @@ object Transaction {
     prepareTransaction(privKey, fee, timestamp, useOutputs, assetIssuingDirective, amount, tokenIdOpt)
   }
 
-  private[this] def prepareTransaction(privKey: PrivateKey25519,
+  private def prepareTransaction(privKey: PrivateKey25519,
                                        fee: Long,
                                        timestamp: Long,
                                        useOutputs: Seq[(Output, Option[(CompiledContract, Seq[Proof])])],
@@ -128,10 +128,11 @@ object Transaction {
 
     val pubKey: PublicKey25519 = privKey.publicImage
 
-    val outputs: IndexedSeq[(Output, Option[(CompiledContract, Seq[Proof])])] =
-      useOutputs
+    val outputs: IndexedSeq[(Output, Option[(CompiledContract, Seq[Proof])])] = useOutputs
         .sortWith(_._1.monetaryValue > _._1.monetaryValue)
-        .foldLeft(IndexedSeq.empty[(Output, Option[(CompiledContract, Seq[Proof])])])((acc, e) => if (acc.map(_._1.monetaryValue).sum < amount) acc :+ e else acc)
+        .foldLeft(IndexedSeq.empty[(Output, Option[(CompiledContract, Seq[Proof])])]) { case (acc, e) =>
+          if (acc.map(_._1.monetaryValue).sum < amount) acc :+ e else acc
+        }
 
     val uInputs: IndexedSeq[Input] =
       outputs
