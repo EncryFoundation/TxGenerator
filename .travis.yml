@@ -1,0 +1,17 @@
+language: scala
+sudo: false
+branches:
+  only:
+    - master
+    - /^\d\.\d+$/
+jdk:
+- oraclejdk10
+scala:
+- 2.12.6
+script:
+  - sbt test
+cache:
+  directories:
+    - $HOME/.sbt
+before_cache:
+  - find $HOME/.sbt        -name "*.lock"               -print -delete
