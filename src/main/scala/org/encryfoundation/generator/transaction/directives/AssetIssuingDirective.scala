@@ -1,4 +1,4 @@
-package transaction.directives
+package org.encryfoundation.generator.transaction.directives
 
 import com.google.common.primitives.{Bytes, Ints, Longs}
 import io.circe.syntax._
@@ -8,7 +8,7 @@ import org.encryfoundation.common.utils.Utils
 import org.encryfoundation.common.{Algos, Constants}
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
 import scorex.crypto.hash.Digest32
-import transaction.box.{Box, EncryProposition, TokenIssuingBox}
+import org.encryfoundation.generator.transaction.box.{Box, EncryProposition, TokenIssuingBox}
 import scala.util.Try
 
 case class AssetIssuingDirective(contractHash: ContractHash, amount: Long) extends Directive {

@@ -1,4 +1,4 @@
-package transaction.directives
+package org.encryfoundation.generator.transaction.directives
 
 import scala.util.{Failure, Try}
 import org.encryfoundation.common.serialization.Serializer

@@ -1,9 +1,9 @@
-package transaction.box
+package org.encryfoundation.generator.transaction.box
 
 import io.circe.Encoder
 import io.circe.syntax._
 import org.encryfoundation.common.Algos
-import transaction.box.TokenIssuingBox.TokenId
+import org.encryfoundation.generator.transaction.box.TokenIssuingBox.TokenId
 
 case class TokenIssuingBox(override val proposition: EncryProposition,
                            override val nonce: Long,

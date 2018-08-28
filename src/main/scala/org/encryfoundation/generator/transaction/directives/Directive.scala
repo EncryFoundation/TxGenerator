@@ -1,9 +1,9 @@
-package transaction.directives
+package org.encryfoundation.generator.transaction.directives
 
 import io.circe._
 import org.encryfoundation.common.serialization.BytesSerializable
 import scorex.crypto.hash.Digest32
-import transaction.box.Box
+import org.encryfoundation.generator.transaction.box.Box
 
 trait Directive extends BytesSerializable {
 

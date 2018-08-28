@@ -1,4 +1,4 @@
-package transaction
+package org.encryfoundation.generator.transaction
 
 import org.encryfoundation.common.transaction.Proof
 import org.encryfoundation.common.utils.TaggedTypes.ADKey

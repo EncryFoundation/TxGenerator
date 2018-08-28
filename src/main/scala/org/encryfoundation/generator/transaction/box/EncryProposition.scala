@@ -1,4 +1,4 @@
-package transaction.box
+package org.encryfoundation.generator.transaction.box
 
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder}

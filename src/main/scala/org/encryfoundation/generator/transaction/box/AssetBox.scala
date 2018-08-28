@@ -1,9 +1,9 @@
-package transaction.box
+package org.encryfoundation.generator.transaction.box
 
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.Algos
-import transaction.box.TokenIssuingBox.TokenId
+import org.encryfoundation.generator.transaction.box.TokenIssuingBox.TokenId
 
 /** Represents monetary asset of some type locked with some `proposition`.
   * `tokenIdOpt = None` if the asset is of intrinsic type. */

@@ -1,4 +1,4 @@
-package transaction.directives
+package org.encryfoundation.generator.transaction.directives
 
 import scala.util.Try
 import com.google.common.primitives.{Bytes, Ints, Longs}
@@ -10,7 +10,7 @@ import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
 import scorex.crypto.hash.Digest32
-import transaction.box.{AssetBox, Box, EncryProposition}
+import org.encryfoundation.generator.transaction.box.{AssetBox, Box, EncryProposition}
 
 case class ScriptedAssetDirective(contractHash: ContractHash,
                                   amount: Long,

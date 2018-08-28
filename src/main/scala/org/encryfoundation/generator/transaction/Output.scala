@@ -1,4 +1,4 @@
-package transaction
+package org.encryfoundation.generator.transaction
 
 case class Output(id: String,
                   txId: String,

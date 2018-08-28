@@ -1,4 +1,4 @@
-package transaction.box
+package org.encryfoundation.generator.transaction.box
 
 import com.google.common.primitives.Longs
 import io.circe.Encoder

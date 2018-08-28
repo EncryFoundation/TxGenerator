@@ -1,4 +1,4 @@
-package transaction
+package org.encryfoundation.generator.transaction
 
 import com.google.common.primitives.{Bytes, Longs}
 import io.circe.syntax._
@@ -9,7 +9,7 @@ import org.encryfoundation.prismlang.compiler.CompiledContract
 import org.encryfoundation.prismlang.core.wrapped.BoxedValue
 import org.encryfoundation.common.Algos
 import scorex.crypto.hash.{Blake2b256, Digest32}
-import transaction.directives._
+import org.encryfoundation.generator.transaction.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 
 /** Completely assembled atomic state modifier. */

@@ -1,4 +1,4 @@
-package transaction.directives
+package org.encryfoundation.generator.transaction.directives
 
 import com.google.common.primitives.{Bytes, Ints, Longs}
 import io.circe.syntax._
@@ -10,7 +10,7 @@ import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.common.utils.Utils
 import org.encryfoundation.common.{Algos, Constants}
 import scorex.crypto.hash.Digest32
-import transaction.box.{AssetBox, Box, EncryProposition}
+import org.encryfoundation.generator.transaction.box.{AssetBox, Box, EncryProposition}
 import scala.util.Try
 
 case class TransferDirective(address: Address,

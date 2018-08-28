@@ -1,4 +1,4 @@
-package transaction
+package org.encryfoundation.generator.transaction
 
 import io.circe.{Decoder, HCursor}
 
