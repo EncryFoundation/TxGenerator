@@ -15,8 +15,10 @@ object Account {
     .fromInputStream(getClass.getResourceAsStream(sourcePath))
     .getLines()
     .map { line =>
-      val splitLine: Array[String] = line.split(" | ")
-      val (privKey: PrivateKey, pubKey: PublicKey) = Curve25519.createKeyPair(Blake2b256.hash(Algos.hash(splitLine.head + "mnemonic=")))
+      val splitLine: Array[String] = line.split("::")
+      val (privKey: PrivateKey, pubKey: PublicKey) = Curve25519.createKeyPair(
+        Blake2b256.hash(Algos.hash(splitLine.head + "mnemonic="))
+      )
       val splitAddr: Array[String] = splitLine.last.split(":")
       Account(PrivateKey25519(privKey, pubKey), InetSocketAddress.createUnresolved(splitAddr.head, splitAddr.last.toInt))
     }
