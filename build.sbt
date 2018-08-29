@@ -3,8 +3,8 @@ version := "0.1.0"
 organization := "org.encryfoundation"
 scalaVersion := "2.12.6"
 
-val akkaVersion = "2.5.13"
-val akkaHttpVersion = "10.0.9"
+val akkaVersion = "2.5.15"
+val akkaHttpVersion = "10.1.4"
 val logbackVersion = "1.2.3"
 
 val loggingDependencies = Seq(
@@ -14,9 +14,10 @@ val loggingDependencies = Seq(
 )
 
 libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
-  "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
+  "com.iheart" %% "ficus" % "1.4.2",
   "org.encry" %% "encry-common" % "0.8.3"
 ) ++ loggingDependencies
 

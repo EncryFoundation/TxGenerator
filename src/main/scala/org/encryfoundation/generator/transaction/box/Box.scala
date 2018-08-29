@@ -1,7 +1,7 @@
 package org.encryfoundation.generator.transaction.box
 
 import com.google.common.primitives.Longs
-import io.circe.Encoder
+import io.circe.{Decoder, DecodingFailure, Encoder}
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 
@@ -24,5 +24,17 @@ object Box {
     case ab: AssetBox => AssetBox.jsonEncoder(ab)
     case db: DataBox => DataBox.jsonEncoder(db)
     case aib: TokenIssuingBox => TokenIssuingBox.jsonEncoder(aib)
+  }
+
+  implicit val jsonDecoder: Decoder[Box] = {
+    Decoder.instance { c =>
+      c.downField("type").as[Byte] match {
+        case Right(s) => s match {
+          case AssetBox.TypeId => AssetBox.jsonDecoder(c)
+          case _ => Left(DecodingFailure("Incorrect directive typeID", c.history))
+        }
+        case Left(_) => Left(DecodingFailure("None typeId", c.history))
+      }
+    }
   }
 }
