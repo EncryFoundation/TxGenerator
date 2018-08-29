@@ -3,8 +3,8 @@ package org.encryfoundation.generator
 import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, Props}
 import akka.stream.Materializer
 import org.encryfoundation.generator.Generator.Utxos
-import org.encryfoundation.generator.UtxoObserver.RequestUtxos
-import org.encryfoundation.generator.network.{Broadcaster, NetworkService}
+import org.encryfoundation.generator.network.UtxoObserver.RequestUtxos
+import org.encryfoundation.generator.network.{Broadcaster, NetworkService, UtxoObserver}
 import org.encryfoundation.generator.settings.GeneratorSettings
 import org.encryfoundation.generator.transaction.box.Box
 import scala.concurrent.ExecutionContext
@@ -29,7 +29,7 @@ case class Generator(account: Account,
   override def receive: Receive = {
     case Utxos(outputs) if outputs.nonEmpty =>
       val partitionsQty: Int = 4
-      val partitionSize: Int = if (outputs.size > partitionsQty * 2) partitionsQty else outputs.size
+      val partitionSize: Int = if (outputs.size > partitionsQty * 2) outputs.size / partitionsQty else outputs.size
       outputs.sliding(partitionSize, partitionSize).foreach { partition =>
         context.actorOf(Props(classOf[Worker], account.secret, partition, broadcaster))
       }
@@ -38,5 +38,5 @@ case class Generator(account: Account,
 
 object Generator {
 
-  case class Utxos(outputs: Set[Box])
+  case class Utxos(outputs: Seq[Box])
 }
