@@ -25,7 +25,7 @@ case class Generator(account: Account,
     .actorOf(Props(classOf[Broadcaster], network, settings.network), s"broadcaster-${observableAddress.address}")
 
   val observer: ActorRef = context
-    .actorOf(Props(classOf[UtxoObserver], account.sourceNode, network, settings.network), s"node-observer-${observableAddress.address}")
+    .actorOf(Props(classOf[UtxoObserver], account.sourceNode, network, settings.network), s"observer-${observableAddress.address}")
 
   val askUtxos: Cancellable = context.system.scheduler
     .schedule(5.seconds, 5.seconds) { observer ! RequestUtxos(-1) }
