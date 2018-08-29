@@ -2,6 +2,7 @@ package org.encryfoundation.generator
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, Props}
 import akka.stream.Materializer
+import org.encryfoundation.common.transaction.Pay2PubKeyAddress
 import org.encryfoundation.generator.Generator.Utxos
 import org.encryfoundation.generator.network.UtxoObserver.RequestUtxos
 import org.encryfoundation.generator.network.{Broadcaster, NetworkService, UtxoObserver}
@@ -18,10 +19,13 @@ case class Generator(account: Account,
 
   val network: NetworkService = NetworkService()
 
-  val broadcaster: ActorRef = system.actorOf(Props(classOf[Broadcaster], network, settings.network))
+  val observableAddress: Pay2PubKeyAddress = account.secret.publicImage.address
+
+  val broadcaster: ActorRef = context
+    .actorOf(Props(classOf[Broadcaster], network, settings.network), s"broadcaster-${observableAddress.address}")
 
   val observer: ActorRef = context
-    .actorOf(Props(classOf[UtxoObserver], account.sourceNode, network, settings.network), "node-observer")
+    .actorOf(Props(classOf[UtxoObserver], account.sourceNode, network, settings.network), s"node-observer-${observableAddress.address}")
 
   val askUtxos: Cancellable = context.system.scheduler
     .schedule(5.seconds, 5.seconds) { observer ! RequestUtxos(-1) }
