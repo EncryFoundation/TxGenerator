@@ -1,4 +1,4 @@
-package org.encryfoundation.generator
+package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
 import akka.actor.ActorSystem
@@ -13,11 +13,11 @@ import org.encryfoundation.generator.transaction.EncryTransaction
 import org.encryfoundation.generator.transaction.box.Box
 import scala.concurrent.{ExecutionContext, Future}
 
-case class NetworkService(host: InetSocketAddress)(implicit val system: ActorSystem,
-                                                   implicit val materializer: Materializer,
-                                                   implicit val ec: ExecutionContext) {
+case class NetworkService(implicit val system: ActorSystem,
+                          implicit val materializer: Materializer,
+                          implicit val ec: ExecutionContext) {
 
-  def requestUtxos: Future[Seq[Box]] =
+  def requestUtxos(host: InetSocketAddress): Future[Seq[Box]] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.GET,
       uri = "/wallet/utxos"
@@ -27,11 +27,10 @@ case class NetworkService(host: InetSocketAddress)(implicit val system: ActorSys
       .map(decode[Seq[Box]])
       .flatMap(_.fold(Future.failed, Future.successful))
 
-  def commitTransaction(tx: EncryTransaction): Future[HttpResponse] =
+  def commitTransaction(host: InetSocketAddress, tx: EncryTransaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = "/transactions/send",
       entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
     ).withEffectiveUri(securedConnection = false, Host(host)))
-
 }

@@ -11,6 +11,7 @@ import org.encryfoundation.common.Algos
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import org.encryfoundation.generator.transaction.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
+import org.encryfoundation.generator.transaction.box.MonetaryBox
 
 /** Completely assembled atomic state modifier. */
 case class EncryTransaction(fee: Long,
@@ -85,13 +86,13 @@ object UnsignedEncryTransaction {
 
 object Transaction {
 
-  def defaultPaymentTransactionScratch(privKey: PrivateKey25519,
-                                       fee: Long,
-                                       timestamp: Long,
-                                       useOutputs: Seq[(Output, Option[(CompiledContract, Seq[Proof])])],
-                                       recipient: String,
-                                       amount: Long,
-                                       tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
+  def defaultPaymentTransaction(privKey: PrivateKey25519,
+                                fee: Long,
+                                timestamp: Long,
+                                useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
+                                recipient: String,
+                                amount: Long,
+                                tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
     val transferDirective: TransferDirective = TransferDirective(recipient, amount, tokenIdOpt)
     prepareTransaction(privKey, fee, timestamp, useOutputs, transferDirective, amount, tokenIdOpt)
   }
@@ -99,7 +100,7 @@ object Transaction {
   def scriptedAssetTransactionScratch(privKey: PrivateKey25519,
                                       fee: Long,
                                       timestamp: Long,
-                                      useOutputs: Seq[(Output, Option[(CompiledContract, Seq[Proof])])],
+                                      useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                       contract: CompiledContract,
                                       amount: Long,
                                       tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
@@ -110,7 +111,7 @@ object Transaction {
   def assetIssuingTransactionScratch(privKey: PrivateKey25519,
                                      fee: Long,
                                      timestamp: Long,
-                                     useOutputs: Seq[(Output, Option[(CompiledContract, Seq[Proof])])],
+                                     useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                      contract: CompiledContract,
                                      amount: Long,
                                      tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
@@ -119,34 +120,33 @@ object Transaction {
   }
 
   private def prepareTransaction(privKey: PrivateKey25519,
-                                       fee: Long,
-                                       timestamp: Long,
-                                       useOutputs: Seq[(Output, Option[(CompiledContract, Seq[Proof])])],
-                                       directive: Directive,
-                                       amount: Long,
-                                       tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
+                                 fee: Long,
+                                 timestamp: Long,
+                                 useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
+                                 directive: Directive,
+                                 amount: Long,
+                                 tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
 
     val pubKey: PublicKey25519 = privKey.publicImage
 
-    val outputs: IndexedSeq[(Output, Option[(CompiledContract, Seq[Proof])])] = useOutputs
-        .sortWith(_._1.monetaryValue > _._1.monetaryValue)
-        .foldLeft(IndexedSeq.empty[(Output, Option[(CompiledContract, Seq[Proof])])]) { case (acc, e) =>
-          if (acc.map(_._1.monetaryValue).sum < amount) acc :+ e else acc
-        }
+    val outputs: IndexedSeq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])] = useOutputs
+      .sortWith(_._1.amount > _._1.amount)
+      .foldLeft(IndexedSeq.empty[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])]) { case (acc, e) =>
+        if (acc.map(_._1.amount).sum < amount) acc :+ e else acc
+      }
 
-    val uInputs: IndexedSeq[Input] =
-      outputs
-        .map { case (o, co) =>
-          Input.unsigned(
-            Algos.decode(o.id).map(ADKey @@ _).getOrElse(throw new RuntimeException(s"Output id ${o.id} can not be decoded with Base16")),
-            co match {
-              case Some((ct, _)) => Left(ct)
-              case None => Right(PubKeyLockedContract(pubKey.pubKeyBytes))
-            }
-          )
-        }
+    val uInputs: IndexedSeq[Input] = outputs
+      .map { case (o, co) =>
+        Input.unsigned(
+          o.id,
+          co match {
+            case Some((ct, _)) => Left(ct)
+            case None => Right(PubKeyLockedContract(pubKey.pubKeyBytes))
+          }
+        )
+      }
 
-    val change: Long = outputs.map(_._1.monetaryValue).sum - (amount + fee)
+    val change: Long = outputs.map(_._1.amount).sum - (amount + fee)
 
     if (change < 0) throw new RuntimeException("Transaction impossible: required amount is bigger than available")
 
