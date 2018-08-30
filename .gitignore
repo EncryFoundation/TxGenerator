@@ -9,4 +9,5 @@
 /project/project/target/
 /encry/data/
 /src/main/resources/local.conf
+/src/main/resources/accounts.txt
 /src/main/resources/logback-test.xml
