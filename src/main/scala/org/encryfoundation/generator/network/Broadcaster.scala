@@ -4,7 +4,7 @@ import akka.actor.Actor
 import org.encryfoundation.generator.settings.NetworkSettings
 import org.encryfoundation.generator.transaction.EncryTransaction
 
-case class Broadcaster(network: NetworkService, settings: NetworkSettings) extends Actor {
+class Broadcaster(network: NetworkService, settings: NetworkSettings) extends Actor {
 
   override def receive: Receive = {
     case Broadcaster.Transaction(tx) =>
