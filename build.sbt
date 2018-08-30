@@ -1,10 +1,10 @@
 name := "TxGenerator"
 version := "0.1.0"
-organization := "org.encryfoundation"
+organization := "org.encry"
 scalaVersion := "2.12.6"
 
-val akkaVersion = "2.5.15"
-val akkaHttpVersion = "10.1.4"
+val akkaVersion = "2.5.13"
+val akkaHttpVersion = "10.0.9"
 val logbackVersion = "1.2.3"
 
 val loggingDependencies = Seq(
