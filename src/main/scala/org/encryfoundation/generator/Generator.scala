@@ -12,11 +12,11 @@ import org.encryfoundation.generator.transaction.box.Box
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-case class Generator(account: Account,
-                     settings: GeneratorSettings)
-                    (implicit val system: ActorSystem,
-                     implicit val materializer: Materializer,
-                     implicit val ec: ExecutionContext) extends Actor {
+class Generator(account: Account,
+                settings: GeneratorSettings)
+               (implicit val system: ActorSystem,
+                implicit val materializer: Materializer,
+                implicit val ec: ExecutionContext) extends Actor {
 
   val network: NetworkService = NetworkService()
 

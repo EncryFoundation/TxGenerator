@@ -8,9 +8,7 @@ import org.encryfoundation.generator.network.Broadcaster
 import org.encryfoundation.generator.transaction.Transaction
 import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
 
-case class Worker(secret: PrivateKey25519,
-                  partition: Seq[Box],
-                  broadcaster: ActorRef) extends Actor {
+class Worker(secret: PrivateKey25519, partition: Seq[Box], broadcaster: ActorRef) extends Actor {
 
   val sourceAddress: Pay2PubKeyAddress = secret.publicImage.address
 

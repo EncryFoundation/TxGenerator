@@ -10,9 +10,9 @@ import org.encryfoundation.generator.transaction.box.Box
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 
-case class UtxoObserver(host: InetSocketAddress,
-                        network: NetworkService,
-                        settings: NetworkSettings) extends Actor {
+class UtxoObserver(host: InetSocketAddress,
+                   network: NetworkService,
+                   settings: NetworkSettings) extends Actor {
 
   implicit val ec: ExecutionContextExecutor = context.system.dispatcher
 
