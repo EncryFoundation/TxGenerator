@@ -1,6 +1,7 @@
 package org.encryfoundation.generator
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, Props}
+import akka.actor.SupervisorStrategy.Restart
+import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.stream.Materializer
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
 import org.encryfoundation.generator.Generator.Utxos
@@ -38,6 +39,11 @@ case class Generator(account: Account,
         context.actorOf(Props(classOf[Worker], account.secret, partition, broadcaster))
       }
   }
+
+  override def supervisorStrategy: SupervisorStrategy =
+    OneForOneStrategy(maxNrOfRetries = 4, withinTimeRange = 30.seconds) {
+      case _ => Restart
+    }
 }
 
 object Generator {
