@@ -4,7 +4,6 @@ import akka.actor.{Actor, ActorRef, PoisonPill}
 import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
 import org.encryfoundation.generator.Actors.Worker.StartGeneration
-import org.encryfoundation.generator.network.Broadcaster
 import org.encryfoundation.generator.transaction.Transaction
 import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
 

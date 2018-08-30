@@ -1,21 +1,18 @@
-package org.encryfoundation.generator.network
+package org.encryfoundation.generator.utils
 
 import java.net.InetSocketAddress
-import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
-import akka.stream.Materializer
 import akka.util.ByteString
 import io.circe.parser.decode
 import io.circe.syntax._
 import org.encryfoundation.generator.transaction.EncryTransaction
 import org.encryfoundation.generator.transaction.box.Box
-import scala.concurrent.{ExecutionContext, Future}
+import org.encryfoundation.generator.GeneratorApp._
+import scala.concurrent.Future
 
-case class NetworkService(implicit val system: ActorSystem,
-                          implicit val materializer: Materializer,
-                          implicit val ec: ExecutionContext) {
+object NetworkService {
 
   def requestUtxos(host: InetSocketAddress): Future[Seq[Box]] =
     Http().singleRequest(HttpRequest(
@@ -27,10 +24,10 @@ case class NetworkService(implicit val system: ActorSystem,
       .map(decode[Seq[Box]])
       .flatMap(_.fold(Future.failed, Future.successful))
 
-  def commitTransaction(host: InetSocketAddress, tx: EncryTransaction): Future[HttpResponse] =
+  def commitTransaction(node: Node, tx: EncryTransaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = "/transactions/send",
       entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
-    ).withEffectiveUri(securedConnection = false, Host(host)))
+    ).withEffectiveUri(securedConnection = false, Host(node.host, node.port)))
 }
