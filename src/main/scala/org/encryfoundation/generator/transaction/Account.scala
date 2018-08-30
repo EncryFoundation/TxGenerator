@@ -1,10 +1,12 @@
-package org.encryfoundation.generator
+package org.encryfoundation.generator.transaction
 
 import java.net.InetSocketAddress
+
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.crypto.PrivateKey25519
 import scorex.crypto.hash.Blake2b256
 import scorex.crypto.signatures.{Curve25519, PrivateKey, PublicKey}
+
 import scala.io.Source
 
 case class Account(secret: PrivateKey25519, sourceNode: InetSocketAddress)

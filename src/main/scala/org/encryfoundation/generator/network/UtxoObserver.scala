@@ -1,18 +1,17 @@
 package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
+
 import akka.actor.{Actor, Cancellable}
 import org.encryfoundation.common.Algos
-import org.encryfoundation.generator.Generator.Utxos
+import org.encryfoundation.generator.Actors.Generator.Utxos
 import org.encryfoundation.generator.network.UtxoObserver.RequestUtxos
 import org.encryfoundation.generator.settings.NetworkSettings
 import org.encryfoundation.generator.transaction.box.Box
 import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 
-case class UtxoObserver(host: InetSocketAddress,
-                        network: NetworkService,
-                        settings: NetworkSettings) extends Actor {
+class UtxoObserver(host: InetSocketAddress, network: NetworkService, settings: NetworkSettings) extends Actor {
 
   implicit val ec: ExecutionContextExecutor = context.system.dispatcher
 

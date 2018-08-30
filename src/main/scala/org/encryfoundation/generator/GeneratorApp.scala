@@ -5,8 +5,10 @@ import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
 import net.ceedubs.ficus.Ficus._
 import net.ceedubs.ficus.readers.ArbitraryTypeReader._
+import org.encryfoundation.generator.Actors.Generator
 import org.encryfoundation.generator.settings.GeneratorSettings
-import org.encryfoundation.generator.settings.GeneratorSettings._
+import org.encryfoundation.generator.transaction.Account
+
 import scala.concurrent.ExecutionContextExecutor
 
 object GeneratorApp extends App {

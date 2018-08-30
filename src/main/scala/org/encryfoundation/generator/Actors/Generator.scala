@@ -1,22 +1,19 @@
-package org.encryfoundation.generator
+package org.encryfoundation.generator.Actors
 
 import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorRef, ActorSystem, Cancellable, OneForOneStrategy, Props, SupervisorStrategy}
-import akka.stream.Materializer
+import akka.actor.{Actor, ActorRef, Cancellable, OneForOneStrategy, Props, SupervisorStrategy}
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
-import org.encryfoundation.generator.Generator.Utxos
 import org.encryfoundation.generator.network.UtxoObserver.RequestUtxos
 import org.encryfoundation.generator.network.{Broadcaster, NetworkService, UtxoObserver}
 import org.encryfoundation.generator.settings.GeneratorSettings
 import org.encryfoundation.generator.transaction.box.Box
-import scala.concurrent.ExecutionContext
+import org.encryfoundation.generator.Actors.Generator.Utxos
+import org.encryfoundation.generator.transaction.Account
+import org.encryfoundation.generator.GeneratorApp._
+
 import scala.concurrent.duration._
 
-case class Generator(account: Account,
-                     settings: GeneratorSettings)
-                    (implicit val system: ActorSystem,
-                     implicit val materializer: Materializer,
-                     implicit val ec: ExecutionContext) extends Actor {
+class Generator(account: Account, settings: GeneratorSettings) extends Actor {
 
   val network: NetworkService = NetworkService()
 
@@ -29,7 +26,9 @@ case class Generator(account: Account,
     .actorOf(Props(classOf[UtxoObserver], account.sourceNode, network, settings.network), s"observer-${observableAddress.address}")
 
   val askUtxos: Cancellable = context.system.scheduler
-    .schedule(5.seconds, 5.seconds) { observer ! RequestUtxos(-1) }
+    .schedule(5.seconds, 5.seconds) {
+      observer ! RequestUtxos(-1)
+    }
 
   override def receive: Receive = {
     case Utxos(outputs) if outputs.nonEmpty =>
@@ -49,4 +48,5 @@ case class Generator(account: Account,
 object Generator {
 
   case class Utxos(outputs: Seq[Box])
+
 }
