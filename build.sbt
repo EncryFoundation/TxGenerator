@@ -1,6 +1,7 @@
 name := "TxGenerator"
 version := "0.1.0"
 organization := "org.encry"
+
 scalaVersion := "2.12.6"
 
 val akkaVersion = "2.5.13"
@@ -24,6 +25,6 @@ libraryDependencies ++= Seq(
 ) ++ loggingDependencies
 
 resolvers ++= Seq("Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/",
-  "SonaType" at "https://oss.sonatyp.org/content/groups/public",
+  "SonaType" at "https://oss.sonatype.org/content/groups/public",
   "Typesafe maven releases" at "http://repo.typesafe.com/typesafe/maven-releases/",
   "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/")
