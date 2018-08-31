@@ -15,7 +15,7 @@ object GeneratorApp extends App {
 
   val settings: Settings = Settings.load
 
-  val accounts: Seq[Account] = Account.parseFromSettings(settings.accountSettings.account)
+  val accounts: Seq[Account] = Account.parseFromSettings(settings.accountSettings)
 
   val generators: Seq[ActorRef] = accounts.zipWithIndex
     .map { case (account, idx) =>
