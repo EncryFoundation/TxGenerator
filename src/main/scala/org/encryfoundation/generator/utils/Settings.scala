@@ -6,12 +6,9 @@ import net.ceedubs.ficus.readers.ArbitraryTypeReader._
 
 case class Settings(peers: List[Node],
                     nodePollingInterval: Int,
-                    influxDB: InfluxDBSettings,
-                    txSettings: TxSettings)
+                    influxDB: InfluxDBSettings)
 
 case class Node(host: String, port: Int)
-
-case class TxSettings(name: String)
 
 case class InfluxDBSettings(url: String,
                             login: String,

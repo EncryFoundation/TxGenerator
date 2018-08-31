@@ -5,6 +5,7 @@ import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.Actors.InfluxActor.TestMessage
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.encryfoundation.generator.GeneratorApp.settings
+import java.net._
 
 class InfluxActor extends Actor with StrictLogging {
 
@@ -15,7 +16,7 @@ class InfluxActor extends Actor with StrictLogging {
 
   override def preStart(): Unit = {
     logger.info("Start influx actor")
-    influxDB.write(settings.influxDB.udpPort, s"""nodestarttime1 value="${settings.txSettings.name}"""")
+    influxDB.write(settings.influxDB.udpPort, s"""nodestarttime1 value="${InetAddress.getLocalHost.getHostAddress}"""")
   }
 
   override def receive: Receive = {
