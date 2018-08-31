@@ -1,11 +1,11 @@
-package org.encryfoundation.generator.Actors
+package org.encryfoundation.generator.actors
 
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{Actor, ActorRef, Cancellable, OneForOneStrategy, Props, SupervisorStrategy}
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
 import org.encryfoundation.generator.transaction.box.Box
-import org.encryfoundation.generator.Actors.Generator.Utxos
-import org.encryfoundation.generator.Actors.UtxoObserver.RequestUtxos
+import org.encryfoundation.generator.actors.Generator.Utxos
+import org.encryfoundation.generator.actors.UtxoObserver.RequestUtxos
 import org.encryfoundation.generator.transaction.Account
 import org.encryfoundation.generator.GeneratorApp._
 import scala.concurrent.duration._

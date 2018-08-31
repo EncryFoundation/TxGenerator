@@ -1,9 +1,9 @@
-package org.encryfoundation.generator.Actors
+package org.encryfoundation.generator.actors
 
 import akka.actor.{Actor, ActorRef, PoisonPill}
 import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
-import org.encryfoundation.generator.Actors.Worker.StartGeneration
+import org.encryfoundation.generator.actors.Worker.StartGeneration
 import org.encryfoundation.generator.transaction.Transaction
 import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
 

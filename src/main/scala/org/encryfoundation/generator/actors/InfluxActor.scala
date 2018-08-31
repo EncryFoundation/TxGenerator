@@ -1,8 +1,8 @@
-package org.encryfoundation.generator.Actors
+package org.encryfoundation.generator.actors
 
 import akka.actor.Actor
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.generator.Actors.InfluxActor.TestMessage
+import org.encryfoundation.generator.actors.InfluxActor.TestMessage
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.encryfoundation.generator.GeneratorApp.settings
 import java.net._
