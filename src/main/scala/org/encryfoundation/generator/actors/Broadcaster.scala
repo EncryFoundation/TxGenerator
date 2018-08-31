@@ -1,4 +1,4 @@
-package org.encryfoundation.generator.Actors
+package org.encryfoundation.generator.actors
 
 import akka.actor.Actor
 import org.encryfoundation.generator.GeneratorApp.settings

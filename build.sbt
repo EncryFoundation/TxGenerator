@@ -1,6 +1,7 @@
 name := "TxGenerator"
 version := "0.1.0"
 organization := "org.encry"
+
 scalaVersion := "2.12.6"
 
 val akkaVersion = "2.5.13"
@@ -17,6 +18,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+  "org.influxdb" % "influxdb-java" % "2.10",
   "com.iheart" %% "ficus" % "1.4.3",
   "org.encry" %% "encry-common" % "0.8.3"
 ) ++ loggingDependencies

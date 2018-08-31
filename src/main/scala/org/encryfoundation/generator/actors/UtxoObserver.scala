@@ -1,10 +1,10 @@
-package org.encryfoundation.generator.Actors
+package org.encryfoundation.generator.actors
 
 import java.net.InetSocketAddress
 import akka.actor.{Actor, Cancellable}
 import org.encryfoundation.common.Algos
-import org.encryfoundation.generator.Actors.Generator.Utxos
-import org.encryfoundation.generator.Actors.UtxoObserver.RequestUtxos
+import org.encryfoundation.generator.actors.Generator.Utxos
+import org.encryfoundation.generator.actors.UtxoObserver.RequestUtxos
 import org.encryfoundation.generator.GeneratorApp.settings
 import org.encryfoundation.generator.transaction.box.Box
 import org.encryfoundation.generator.utils.NetworkService
