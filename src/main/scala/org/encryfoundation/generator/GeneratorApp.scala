@@ -22,7 +22,8 @@ object GeneratorApp extends App {
 
   val generators: Seq[ActorRef] = accounts.zipWithIndex
     .map { case (account, idx) =>
-      system.actorOf(Props(classOf[Generator], account), s"generator-$idx")}
+      system.actorOf(Props(classOf[Generator], account), s"generator-$idx")
+    }
 
   if (settings.influxDB.enable) system.actorOf(Props[InfluxActor], "influxDB")
 
