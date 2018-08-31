@@ -8,6 +8,11 @@ case class Settings(peers: List[Node],
                     nodePollingInterval: Int,
                     influxDB: InfluxDBSettings)
 
+object Settings {
+  def load: Settings = ConfigFactory.load("local.conf")
+    .withFallback(ConfigFactory.load).as[Settings]
+}
+
 case class Node(host: String, port: Int)
 
 case class InfluxDBSettings(url: String,
@@ -15,8 +20,3 @@ case class InfluxDBSettings(url: String,
                             password: String,
                             udpPort: Int,
                             enable: Boolean)
-
-object Settings {
-  def load: Settings = ConfigFactory.load("local.conf")
-    .withFallback(ConfigFactory.load).as[Settings]
-}
