@@ -22,4 +22,4 @@ case class InfluxDBSettings(url: String,
                             udpPort: Int,
                             enable: Boolean)
 
-case class AccountsSettings(mnemonic: String, host: String, port: Int)
+case class AccountsSettings(mnemonic: String, node: Node)

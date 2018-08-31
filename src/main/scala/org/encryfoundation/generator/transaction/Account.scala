@@ -15,6 +15,6 @@ object Account {
     accounts.map { account =>
       val (privKey: PrivateKey, pubKey: PublicKey) = Curve25519.createKeyPair(
         Blake2b256.hash(Algos.hash(account.mnemonic + "mnemonic=")))
-      Account(PrivateKey25519(privKey, pubKey), InetSocketAddress.createUnresolved(account.host, account.port))
+      Account(PrivateKey25519(privKey, pubKey), InetSocketAddress.createUnresolved(account.node.host, account.node.port))
     }
 }
