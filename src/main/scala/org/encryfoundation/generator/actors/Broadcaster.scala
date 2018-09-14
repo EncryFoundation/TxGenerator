@@ -7,6 +7,7 @@ import org.encryfoundation.generator.utils.NetworkService
 import org.encryfoundation.generator.GeneratorApp._
 import org.encryfoundation.generator.actors.InfluxActor.SendTxsQty
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class Broadcaster extends Actor {
 
@@ -23,9 +24,6 @@ class Broadcaster extends Actor {
       NetworkService.commitTransaction(_, tx)
     }
   }
-
-  //TODO check response from node for broadcast actor, check broadcast actor!
-  //TODO Check core http partm 'Internal server error' wallet/utxo
 }
 
 object Broadcaster {
