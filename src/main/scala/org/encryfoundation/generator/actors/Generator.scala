@@ -21,14 +21,15 @@ class Generator(account: Account) extends Actor {
     .actorOf(Props(classOf[UtxoObserver], account.sourceNode), s"observer-${observableAddress.address}")
 
   val askUtxos: Cancellable = context.system.scheduler
-    .schedule(5.seconds, 5.seconds) {
-      observer ! RequestUtxos(-1)
+    .schedule(5.seconds, settings.generator.askUtxoTime.seconds) {
+      observer ! RequestUtxos(settings.generator.utxoQty)
     }
 
   override def receive: Receive = {
     case Utxos(outputs) if outputs.nonEmpty =>
-      val partitionsQty: Int = 4
-      val partitionSize: Int = if (outputs.size > partitionsQty * 2) outputs.size / partitionsQty else outputs.size
+      val partitionSize: Int =
+        if (outputs.size > settings.generator.partitionsQty * 2) outputs.size / settings.generator.partitionsQty
+        else outputs.size
       outputs.sliding(partitionSize, partitionSize).foreach { partition =>
         context.actorOf(Props(classOf[Worker], account.secret, partition, broadcaster))
       }

@@ -7,7 +7,9 @@ import net.ceedubs.ficus.readers.ArbitraryTypeReader._
 case class Settings(peers: List[Node],
                     nodePollingInterval: Int,
                     influxDB: InfluxDBSettings,
-                    accountSettings: List[AccountsSettings])
+                    accountSettings: List[AccountsSettings],
+                    generator: GeneratorSettings,
+                    worker: WorkerSettings)
 
 object Settings {
   def load: Settings = ConfigFactory.load("local.conf")
@@ -23,3 +25,7 @@ case class InfluxDBSettings(url: String,
                             enable: Boolean)
 
 case class AccountsSettings(mnemonic: String, node: Node)
+
+case class GeneratorSettings(utxoQty: Int, askUtxoTime: Int, partitionsQty: Int)
+
+case class WorkerSettings(feeAmount: Int)
