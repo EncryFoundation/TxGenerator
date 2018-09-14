@@ -5,7 +5,7 @@ organization := "org.encry"
 scalaVersion := "2.12.6"
 
 val akkaVersion = "2.5.13"
-val akkaHttpVersion = "10.1.4"
+val akkaHttpVersion = "10.0.9"
 val logbackVersion = "1.2.3"
 
 val loggingDependencies = Seq(
