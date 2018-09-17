@@ -22,9 +22,9 @@ class UtxoObserver(host: InetSocketAddress) extends Actor {
   var usedUtxsos: TreeSet[String] = TreeSet.empty
 
   val utxosRequest: Cancellable = context.system.scheduler
-    .schedule(initialDelay = 5 seconds, interval = settings.nodePollingInterval seconds)(fetchUtxos())
+    .schedule(initialDelay = 20 seconds, interval = settings.nodePollingInterval seconds)(fetchUtxos())
 
-  context.system.scheduler.schedule(360 second, 360 second) {
+  context.system.scheduler.schedule(600 second, 600 second) {
     usedUtxsos = TreeSet.empty
   }
 
@@ -48,9 +48,7 @@ class UtxoObserver(host: InetSocketAddress) extends Actor {
   def fetchUtxos(): Unit = {
     NetworkService.requestUtxos(host).map { outputs =>
       pool ++= Map(outputs.map(o => Algos.encode(o.id) -> o): _*)
-      println(pool.size)
       pool = pool.filterKeys(output => !usedUtxsos.contains(output))
-      println(pool.size)
       context.system.actorSelection("user/influxDB") ! IncomeOutputsMessage(outputs.size, pool.size)
     }
   }
