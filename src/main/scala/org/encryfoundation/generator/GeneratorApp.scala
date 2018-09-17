@@ -9,15 +9,13 @@ import scala.concurrent.ExecutionContextExecutor
 
 object GeneratorApp extends App {
 
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
-  implicit val ec: ExecutionContextExecutor = system.dispatcher
+  implicit lazy val system: ActorSystem = ActorSystem()
+  implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
+  implicit lazy val ec: ExecutionContextExecutor = system.dispatcher
 
-  val settings: Settings = Settings.load
+  lazy val settings: Settings = Settings.load
 
-  val accounts: Seq[Account] = Account.parseFromSettings(settings.accountSettings)
-
-  val generators: Seq[ActorRef] = accounts.zipWithIndex
+  val generators: Seq[ActorRef] = Account.parseFromSettings(settings.accountSettings).zipWithIndex
     .map { case (account, idx) =>
       system.actorOf(Props(classOf[Generator], account), s"generator-$idx")
     }
