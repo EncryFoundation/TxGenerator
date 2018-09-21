@@ -1,6 +1,7 @@
 package org.encryfoundation.generator.actors
 
 import akka.actor.Actor
+import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.GeneratorApp.settings
 import org.encryfoundation.generator.transaction.EncryTransaction
 import org.encryfoundation.generator.utils.NetworkService
@@ -9,7 +10,7 @@ import org.encryfoundation.generator.actors.InfluxActor.SendTxsQty
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class Broadcaster extends Actor {
+class Broadcaster extends Actor with StrictLogging {
 
   var sendTxs: Int = 0
 
@@ -23,6 +24,7 @@ class Broadcaster extends Actor {
       sendTxs += 1
       NetworkService.commitTransaction(_, tx)
     }
+      logger.info("broadcast txs")
   }
 }
 

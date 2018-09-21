@@ -19,8 +19,8 @@ class InfluxActor extends Actor with StrictLogging {
   influxDB.setRetentionPolicy("autogen")
 
   override def preStart(): Unit = {
-    logger.info("Start influx actor")
-    influxDB.write(settings.influxDB.udpPort, s"""nodestarttime1 value="$nodeName"""")
+    logger.info("influx actor started")
+  influxDB.write(settings.influxDB.udpPort, s"""txGenStartTime value="$nodeName"""")
   }
 
   override def receive: Receive = {

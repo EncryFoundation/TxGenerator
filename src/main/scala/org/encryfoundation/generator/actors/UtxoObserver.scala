@@ -2,6 +2,7 @@ package org.encryfoundation.generator.actors
 
 import java.net.InetSocketAddress
 import akka.actor.{Actor, Cancellable}
+import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.actors.Generator.Utxos
 import org.encryfoundation.generator.actors.UtxoObserver.RequestUtxos
@@ -14,7 +15,7 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class UtxoObserver(host: InetSocketAddress) extends Actor {
+class UtxoObserver(host: InetSocketAddress) extends Actor with StrictLogging {
 
   implicit val ec: ExecutionContextExecutor = context.system.dispatcher
 
@@ -50,6 +51,7 @@ class UtxoObserver(host: InetSocketAddress) extends Actor {
       pool ++= Map(outputs.map(o => Algos.encode(o.id) -> o): _*)
       pool = pool.filterKeys(output => !usedUtxsos.contains(output))
       context.system.actorSelection("user/influxDB") ! IncomeOutputsMessage(outputs.size, pool.size)
+      logger.info("got outputs from remote")
     }
   }
 }

@@ -2,12 +2,13 @@ package org.encryfoundation.generator
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.stream.ActorMaterializer
+import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.actors.{Generator, InfluxActor}
 import org.encryfoundation.generator.transaction.Account
 import org.encryfoundation.generator.utils.Settings
 import scala.concurrent.ExecutionContextExecutor
 
-object GeneratorApp extends App {
+object GeneratorApp extends App with StrictLogging {
 
   implicit lazy val system: ActorSystem = ActorSystem()
   implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
@@ -21,5 +22,7 @@ object GeneratorApp extends App {
     }
 
   if (settings.influxDB.enable) system.actorOf(Props[InfluxActor], "influxDB")
+
+  logger.info("txGen started")
 
 }
