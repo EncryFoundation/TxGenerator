@@ -35,10 +35,6 @@ class UtxoObserver(host: InetSocketAddress) extends Actor with StrictLogging {
         if (qty < 0) pool.size
         else if (qty <= pool.size) qty
         else pool.size
-      //        qty match {
-      //        case num: Int if num <= pool.size && num >= 0 => num
-      //        case _ => pool.size
-      //      }
       val outputs: Map[String, Box] = pool.take(takeQty)
       pool --= outputs.keys
       usedUtxsos ++= outputs.keySet

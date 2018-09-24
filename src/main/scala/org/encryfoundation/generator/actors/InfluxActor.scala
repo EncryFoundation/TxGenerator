@@ -2,7 +2,7 @@ package org.encryfoundation.generator.actors
 
 import akka.actor.Actor
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.generator.actors.InfluxActor.{IncomeOutputsMessage, RequestUtxoMessage, SendTxsQty, TestMessage}
+import org.encryfoundation.generator.actors.InfluxActor.{IncomeOutputsMessage, RequestUtxoMessage}
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import org.encryfoundation.generator.GeneratorApp.settings
 import java.net._
@@ -28,8 +28,6 @@ class InfluxActor extends Actor with StrictLogging {
       influxDB.write(udpPort, s"incomeOutput,nodeName=$nodeName value=$outputs,poolSize=$poolSize")
     case RequestUtxoMessage(pool, utxoNum) =>
       influxDB.write(udpPort, s"requestUtxos,nodeName=$nodeName value=$pool,requestedUtxos=$utxoNum")
-    case SendTxsQty(qty) =>
-      influxDB.write(udpPort, s"sendTxsQty,nodeName=$nodeName value=$qty")
   }
 }
 
@@ -42,8 +40,6 @@ object InfluxActor {
   case class RequestUtxoMessage(currentPool: Int, numOfUtxos: Int)
 
   case class WorkerMessage(workerName: String)
-
-  case class SendTxsQty(qty: Int)
 
 }
 
