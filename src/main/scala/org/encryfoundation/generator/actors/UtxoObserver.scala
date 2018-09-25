@@ -38,7 +38,8 @@ class UtxoObserver(host: InetSocketAddress) extends Actor with StrictLogging {
       val outputs: Map[String, Box] = pool.take(takeQty)
       pool --= outputs.keys
       usedUtxsos ++= outputs.keySet
-      context.system.actorSelection("user/influxDB") ! RequestUtxoMessage(pool.size, outputs.size)
+      if (settings.influxDB.enable)
+        context.system.actorSelection("user/influxDB") ! RequestUtxoMessage(pool.size, outputs.size)
       sender() ! Utxos(outputs.values.toSeq)
   }
 
@@ -46,7 +47,8 @@ class UtxoObserver(host: InetSocketAddress) extends Actor with StrictLogging {
     NetworkService.requestUtxos(host).map { outputs =>
       pool ++= Map(outputs.map(o => Algos.encode(o.id) -> o): _*)
       pool = pool.filterKeys(output => !usedUtxsos.contains(output))
-      context.system.actorSelection("user/influxDB") ! IncomeOutputsMessage(outputs.size, pool.size)
+      if (settings.influxDB.enable)
+        context.system.actorSelection("user/influxDB") ! IncomeOutputsMessage(outputs.size, pool.size)
       logger.info("got outputs from remote")
     }
   }

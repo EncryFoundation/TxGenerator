@@ -7,7 +7,6 @@ import org.encryfoundation.generator.actors.Worker.StartGeneration
 import org.encryfoundation.generator.transaction.{EncryTransaction, Transaction}
 import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
 import org.encryfoundation.generator.GeneratorApp.{settings, system}
-import org.encryfoundation.generator.actors.InfluxActor.SendTxsQty
 
 class Worker(secret: PrivateKey25519, partition: Seq[Box], broadcaster: ActorRef) extends Actor {
 
@@ -18,7 +17,7 @@ class Worker(secret: PrivateKey25519, partition: Seq[Box], broadcaster: ActorRef
   override def receive: Receive = {
     case StartGeneration =>
       val listTxs: List[EncryTransaction] = partition.map { case output: MonetaryBox =>
-        val useAmount: Long = output.amount / 4
+        val useAmount: Long = output.amount
         Transaction.defaultPaymentTransaction(
           secret,
           settings.worker.feeAmount,
@@ -30,7 +29,6 @@ class Worker(secret: PrivateKey25519, partition: Seq[Box], broadcaster: ActorRef
       }.to[List]
 
       broadcaster ! Broadcaster.Transaction(listTxs)
-      system.actorSelection("user/influxDB") ! SendTxsQty(listTxs.size)
       self ! PoisonPill
   }
 }

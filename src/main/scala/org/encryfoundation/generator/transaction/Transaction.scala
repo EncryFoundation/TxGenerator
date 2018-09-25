@@ -148,7 +148,6 @@ object Transaction {
 
     val change: Long = outputs.map(_._1.amount).sum - (amount + fee)
 
-    //TODO may bye change error for just log message??
     if (change < 0) throw new RuntimeException("Transaction impossible: required amount is bigger than available")
 
     val directives: IndexedSeq[Directive] =
