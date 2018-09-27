@@ -26,6 +26,6 @@ case class InfluxDBSettings(url: String,
 
 case class AccountsSettings(mnemonic: String, node: Node)
 
-case class GeneratorSettings(utxoQty: Int, askUtxoTime: Int, partitionsQty: Int)
+case class GeneratorSettings(utxoQty: Int, askUtxoTimeFromLocalPool: Int, partitionsQty: Int)
 
 case class WorkerSettings(feeAmount: Int)

@@ -12,7 +12,7 @@ class Broadcaster extends Actor with StrictLogging {
   override def receive: Receive = {
     case Broadcaster.Transaction(tx) => settings.peers.foreach {
       NetworkService.commitTransaction(_, tx) }
-      logger.info("broadcast txs") }
+      logger.info("Broadcaster send transactions to the nodes") }
 }
 
 object Broadcaster {

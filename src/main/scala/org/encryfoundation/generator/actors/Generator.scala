@@ -21,7 +21,7 @@ class Generator(account: Account) extends Actor {
     .actorOf(Props(classOf[UtxoObserver], account.sourceNode), s"observer-${observableAddress.address}")
 
   val askUtxos: Cancellable = context.system.scheduler
-    .schedule(5.seconds, settings.generator.askUtxoTime.seconds) {
+    .schedule(5.seconds, settings.generator.askUtxoTimeFromLocalPool.seconds) {
       observer ! RequestUtxos(settings.generator.utxoQty)
     }
 
