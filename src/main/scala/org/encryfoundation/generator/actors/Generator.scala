@@ -2,6 +2,7 @@ package org.encryfoundation.generator.actors
 
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{Actor, ActorRef, Cancellable, OneForOneStrategy, Props, SupervisorStrategy}
+import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
 import org.encryfoundation.generator.transaction.box.Box
 import org.encryfoundation.generator.actors.Generator.Utxos
@@ -10,7 +11,7 @@ import org.encryfoundation.generator.transaction.Account
 import org.encryfoundation.generator.GeneratorApp._
 import scala.concurrent.duration._
 
-class Generator(account: Account) extends Actor {
+class Generator(account: Account) extends Actor with StrictLogging {
 
   val observableAddress: Pay2PubKeyAddress = account.secret.publicImage.address
 
@@ -23,6 +24,7 @@ class Generator(account: Account) extends Actor {
   val askUtxos: Cancellable = context.system.scheduler
     .schedule(5.seconds, settings.generator.askUtxoTimeFromLocalPool.seconds) {
       observer ! RequestUtxos(settings.generator.utxoQty)
+      logger.info(s"Generator asked ${settings.generator.utxoQty} from local pool")
     }
 
   override def receive: Receive = {
