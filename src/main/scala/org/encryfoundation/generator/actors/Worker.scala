@@ -18,7 +18,7 @@ class Worker(secret: PrivateKey25519, partition: Seq[Box], broadcaster: ActorRef
   override def receive: Receive = {
     case StartGeneration =>
       val listTxs: List[EncryTransaction] = partition.map { case output: MonetaryBox =>
-        val useAmount: Long = output.amount
+        val useAmount: Long = output.amount / 4
         Transaction.defaultPaymentTransaction(
           secret,
           settings.worker.feeAmount,
