@@ -9,7 +9,8 @@ case class Settings(peers: List[Node],
                     influxDB: InfluxDBSettings,
                     accountSettings: List[AccountsSettings],
                     generator: GeneratorSettings,
-                    worker: WorkerSettings)
+                    worker: WorkerSettings,
+                    recipientAddress: String)
 
 object Settings {
   def load: Settings = ConfigFactory.load("local.conf")
