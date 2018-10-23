@@ -24,7 +24,7 @@ class Worker(secret: PrivateKey25519, partition: Seq[Box], broadcaster: ActorRef
           settings.worker.feeAmount,
           System.currentTimeMillis(),
           Seq((output, None)),
-          sourceAddress.address,
+          settings.recipientAddress,
           useAmount - settings.worker.feeAmount
         )
       }.to[List]
