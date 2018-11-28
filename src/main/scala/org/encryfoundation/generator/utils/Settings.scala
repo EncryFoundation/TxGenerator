@@ -10,7 +10,8 @@ case class Settings(peers: List[Node],
                     accountSettings: List[AccountsSettings],
                     generator: GeneratorSettings,
                     worker: WorkerSettings,
-                    recipientAddress: String)
+                    recipientAddress: String,
+                    dataDirective: DataDirectiveSettings)
 
 object Settings {
   def load: Settings = ConfigFactory.load("local.conf")
@@ -25,8 +26,10 @@ case class InfluxDBSettings(url: String,
                             udpPort: Int,
                             enable: Boolean)
 
-case class AccountsSettings(mnemonic: String, node: Node)
+case class AccountsSettings(publicKey: String, privateKey: String, node: Node)
 
 case class GeneratorSettings(utxoQty: Int, askUtxoTimeFromLocalPool: Int, partitionsQty: Int)
 
 case class WorkerSettings(feeAmount: Int)
+
+case class DataDirectiveSettings(dataSize: Int)

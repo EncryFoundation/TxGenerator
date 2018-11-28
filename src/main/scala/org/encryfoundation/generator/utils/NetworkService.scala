@@ -24,7 +24,7 @@ object NetworkService {
       .map(decode[Seq[Box]])
       .flatMap(_.fold(Future.failed, Future.successful))
 
-  def commitTransaction(node: Node, txs: Seq[EncryTransaction]): Future[HttpResponse] =
+  def commitTransaction(node: Node, txs: EncryTransaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = "/transactions/send",

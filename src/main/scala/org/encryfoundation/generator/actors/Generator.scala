@@ -44,7 +44,5 @@ class Generator(account: Account) extends Actor with StrictLogging {
 }
 
 object Generator {
-
   case class Utxos(outputs: Seq[Box])
-
 }

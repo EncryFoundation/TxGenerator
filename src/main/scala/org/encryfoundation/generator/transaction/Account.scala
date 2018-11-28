@@ -13,8 +13,10 @@ object Account {
 
   def parseFromSettings(accounts: List[AccountsSettings]): Seq[Account] =
     accounts.map { account =>
-      val (privKey: PrivateKey, pubKey: PublicKey) = Curve25519.createKeyPair(
-        Blake2b256.hash(Algos.hash(account.mnemonic + "mnemonic=")))
+//      val (privKey: PrivateKey, pubKey: PublicKey) = Curve25519.createKeyPair(
+//        Blake2b256.hash(Algos.hash(account.mnemonic + "mnemonic=")))
+      val privKey = PrivateKey @@ Algos.decode(account.privateKey).get
+      val pubKey = PublicKey @@ Algos.decode(account.publicKey).get
       Account(PrivateKey25519(privKey, pubKey), InetSocketAddress.createUnresolved(account.node.host, account.node.port))
     }
 }
