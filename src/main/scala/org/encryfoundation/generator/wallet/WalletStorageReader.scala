@@ -12,13 +12,13 @@ case class WalletStorageReader(settings: Settings) extends StrictLogging {
 
   val AccountPrefix: Byte = 0x05
 
-  val walletDir: File = new File(s"${settings.directory}/wallet")
+  def walletDir: File = new File(s"${settings.directory}/wallet")
 
-  val keysDir: File = new File(s"${settings.directory}/keys")
+  def keysDir: File = new File(s"${settings.directory}/keys")
 
-  val walletStore: LSMStore = new LSMStore(walletDir, keepVersions = 0)
+  def walletStore: LSMStore = new LSMStore(walletDir, keepVersions = 0)
 
-  val accountManagerStore: LSMStore = new LSMStore(keysDir, keepVersions = 0, keySize = 33)
+  def accountManagerStore: LSMStore = new LSMStore(keysDir, keepVersions = 0, keySize = 33)
 
   val publicKeys: Set[PublicKey25519] =
     accountManagerStore.getAll().foldLeft(Seq.empty[PublicKey25519]) { case (acc, (k, _)) =>

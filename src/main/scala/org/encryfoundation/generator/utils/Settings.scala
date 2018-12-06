@@ -18,7 +18,7 @@ case class InfluxDBSettings(url: String,
 
 case class GeneratorSettings(askBoxesHolderForBoxesPeriod: Int, partitionsQty: Int)
 
-case class WorkerSettings(feeAmount: Int)
+case class WorkerSettings(feeAmount: Int, useAmountDivisor: Int)
 
 case class BoxesHolderSettings(askBoxesFromLocalDBPeriod: Int, qtyOfAskedBoxes: Int)
 

@@ -1,7 +1,6 @@
 package org.encryfoundation.generator.utils
 
 import org.encryfoundation.generator.transaction.box._
-
 import scala.util.{Failure, Try}
 
 object StateModifierDeserializer {

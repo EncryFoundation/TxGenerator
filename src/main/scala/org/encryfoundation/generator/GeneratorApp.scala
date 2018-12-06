@@ -5,7 +5,7 @@ import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.actors.{Generator, InfluxActor}
 import org.encryfoundation.generator.utils.Settings
-import org.encryfoundation.generator.wallet.{WalletStorage, WalletStorageReader}
+import org.encryfoundation.generator.wallet.WalletStorageReader
 import scala.concurrent.ExecutionContextExecutor
 import com.typesafe.config.ConfigFactory
 import net.ceedubs.ficus.Ficus._
@@ -27,13 +27,11 @@ object GeneratorApp extends App with StrictLogging {
 
   val walletStorageReader: WalletStorageReader = WalletStorageReader(settings)
 
-  val walletStorage: WalletStorage = walletStorageReader.createWalletStorage
-
   val privateKeys: List[PrivateKey25519] = walletStorageReader.accounts
 
   val generators: Seq[ActorRef] = privateKeys.zipWithIndex
     .map { case (privKey, idx) =>
       logger.info(s"New generator actor started with privKey: ${Algos.encode(privKey.bytes)}.")
-      system.actorOf(Generator.props(settings, privKey, walletStorage), s"generator-$idx")
+      system.actorOf(Generator.props(settings, privKey, walletStorageReader), s"generator-$idx")
     }
 }

@@ -8,17 +8,18 @@ import org.encryfoundation.common.transaction.Pay2PubKeyAddress
 import org.encryfoundation.generator.actors.BoxesHolder.{AskBoxesFromGenerator, BoxesAnswerToGenerator}
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.encryfoundation.generator.utils.Settings
-import org.encryfoundation.generator.wallet.WalletStorage
+import org.encryfoundation.generator.wallet.WalletStorageReader
 import scala.concurrent.duration._
 
 class Generator(settings: Settings,
                 privKey: PrivateKey25519,
-                walletStorage: WalletStorage) extends Actor with StrictLogging {
+                walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
   val observableAddress: Pay2PubKeyAddress = privKey.publicImage.address
   val broadcaster: ActorRef =
     context.actorOf(Broadcaster.props(settings), s"broadcaster-${observableAddress.address}")
-  val boxesHolder: ActorRef = context.system.actorOf(BoxesHolder.props(settings, walletStorage), "boxesHolder")
+  val boxesHolder: ActorRef =
+    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader), "boxesHolder")
   val getLocalUtxos: Cancellable =
     context.system.scheduler.schedule(5.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
       boxesHolder ! AskBoxesFromGenerator
@@ -42,6 +43,6 @@ class Generator(settings: Settings,
 }
 
 object Generator {
-  def props(settings: Settings, privKey: PrivateKey25519, walletStorage: WalletStorage): Props =
-    Props(new Generator(settings, privKey, walletStorage))
+  def props(settings: Settings, privKey: PrivateKey25519, walletStorageReader: WalletStorageReader): Props =
+    Props(new Generator(settings, privKey, walletStorageReader))
 }

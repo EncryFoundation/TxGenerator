@@ -21,7 +21,7 @@ class Worker(secret: PrivateKey25519,
   override def receive: Receive = {
     case StartGeneration =>
       val listTxs: List[EncryTransaction] = partition.map { case output: MonetaryBox =>
-        val useAmount: Long = output.amount / 4
+        val useAmount: Long = output.amount / settings.worker.useAmountDivisor
         Transaction.defaultPaymentTransaction(
           secret,
           settings.worker.feeAmount,

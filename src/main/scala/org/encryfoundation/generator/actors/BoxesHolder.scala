@@ -5,11 +5,13 @@ import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.actors.BoxesHolder.{AskBoxesFromGenerator, BoxesAnswerToGenerator, BoxesRequestFromLocal}
 import org.encryfoundation.generator.transaction.box.EncryBaseBox
 import org.encryfoundation.generator.utils.Settings
-import org.encryfoundation.generator.wallet.WalletStorage
+import org.encryfoundation.generator.wallet.{WalletStorage, WalletStorageReader}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-class BoxesHolder(settings: Settings, walletStorage: WalletStorage) extends Actor with StrictLogging {
+class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
+
+  var walletStorage: WalletStorage = walletStorageReader.createWalletStorage
 
   val defaultAskTime: FiniteDuration = settings.boxesHolderSettings.askBoxesFromLocalDBPeriod.seconds
 
@@ -24,6 +26,7 @@ class BoxesHolder(settings: Settings, walletStorage: WalletStorage) extends Acto
 
   def boxesHolderBehavior(boxes: List[EncryBaseBox] = List()): Receive = {
     case BoxesRequestFromLocal =>
+      walletStorage = walletStorageReader.createWalletStorage
       val newBoxesFromDB: List[EncryBaseBox] = walletStorage.allBoxes.toList
       logger.info(s"Got new request for new boxes from DB from local. Qty of new boxes is: ${newBoxesFromDB.size}.")
       context.become(boxesHolderBehavior(newBoxesFromDB))
@@ -39,7 +42,8 @@ class BoxesHolder(settings: Settings, walletStorage: WalletStorage) extends Acto
 
 object BoxesHolder {
 
-  def props(settings: Settings, walletStorage: WalletStorage): Props = Props(new BoxesHolder(settings, walletStorage))
+  def props(settings: Settings, walletStorageReader: WalletStorageReader): Props =
+    Props(new BoxesHolder(settings, walletStorageReader))
 
   case object BoxesRequestFromLocal
   case object AskBoxesFromGenerator
