@@ -17,5 +17,4 @@ class Broadcaster(settings: Settings) extends Actor with StrictLogging {
 object Broadcaster {
   def props(settings: Settings): Props = Props(new Broadcaster(settings))
   case class Transaction(txs: EncryTransaction)
-
 }
