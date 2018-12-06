@@ -18,6 +18,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-http" % akkaHttpVersion,
   "com.typesafe.akka" %% "akka-actor" % akkaVersion,
   "com.typesafe.akka" %% "akka-stream" % akkaVersion,
+  "org.scorexfoundation" %% "iodb" % "0.3.2",
   "org.influxdb" % "influxdb-java" % "2.10",
   "com.iheart" %% "ficus" % "1.4.3",
   "org.encry" %% "encry-common" % "0.8.3"

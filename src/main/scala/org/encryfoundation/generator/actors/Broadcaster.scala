@@ -1,21 +1,21 @@
 package org.encryfoundation.generator.actors
 
-import akka.actor.Actor
+import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.generator.GeneratorApp.settings
+import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.transaction.EncryTransaction
-import org.encryfoundation.generator.utils.NetworkService
+import org.encryfoundation.generator.utils.{NetworkService, Settings}
 import scala.language.postfixOps
 
-class Broadcaster extends Actor with StrictLogging {
+class Broadcaster(settings: Settings) extends Actor with StrictLogging {
 
   override def receive: Receive = {
     case Broadcaster.Transaction(tx) => settings.peers.foreach(NetworkService.commitTransaction(_, tx))
-      logger.info(s"Broadcaster send ${tx.size} transactions to the nodes") }
+      logger.info(s"Broadcaster send ${Algos.encode(tx.id)} transaction to the nodes.") }
 }
 
 object Broadcaster {
-
-  case class Transaction(txs: List[EncryTransaction])
+  def props(settings: Settings): Props = Props(new Broadcaster(settings))
+  case class Transaction(txs: EncryTransaction)
 
 }
