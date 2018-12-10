@@ -1,7 +1,7 @@
 package org.encryfoundation.generator.actors
 
 import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorRef, Cancellable, OneForOneStrategy, Props, SupervisorStrategy}
+import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, SupervisorStrategy}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
@@ -20,11 +20,10 @@ class Generator(settings: Settings,
     context.actorOf(Broadcaster.props(settings), s"broadcaster-${observableAddress.address}")
   val boxesHolder: ActorRef =
     context.system.actorOf(BoxesHolder.props(settings, walletStorageReader), "boxesHolder")
-  val getLocalUtxos: Cancellable =
-    context.system.scheduler.schedule(5.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
-      boxesHolder ! AskBoxesFromGenerator
-      logger.info(s"Generator asked boxesHolder for new boxes.")
-    }
+  context.system.scheduler.schedule(5.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
+    boxesHolder ! AskBoxesFromGenerator
+    logger.info(s"Generator asked boxesHolder for new boxes.")
+  }
 
   override def receive: Receive = {
     case BoxesAnswerToGenerator(boxes) if boxes.nonEmpty =>

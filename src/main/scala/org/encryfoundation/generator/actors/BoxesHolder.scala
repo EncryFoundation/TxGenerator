@@ -1,6 +1,6 @@
 package org.encryfoundation.generator.actors
 
-import akka.actor.{Actor, Cancellable, Props}
+import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.actors.BoxesHolder.{AskBoxesFromGenerator, BoxesAnswerToGenerator, BoxesRequestFromLocal}
 import org.encryfoundation.generator.transaction.box.EncryBaseBox
@@ -12,15 +12,9 @@ import scala.concurrent.duration._
 class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
   var walletStorage: WalletStorage = walletStorageReader.createWalletStorage
-
   val defaultAskTime: FiniteDuration = settings.boxesHolderSettings.askBoxesFromLocalDBPeriod.seconds
 
-  val takeBoxesSchedule: Cancellable = context.system.scheduler.schedule(
-    5.seconds,
-    settings.boxesHolderSettings.askBoxesFromLocalDBPeriod.seconds,
-    self,
-    BoxesRequestFromLocal
-  )
+  context.system.scheduler.schedule(5.seconds, defaultAskTime, self, BoxesRequestFromLocal)
 
   override def receive: Receive = boxesHolderBehavior()
 
@@ -33,7 +27,7 @@ class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) 
     case AskBoxesFromGenerator =>
       val boxesForRequest: List[EncryBaseBox] = boxes.take(settings.boxesHolderSettings.qtyOfAskedBoxes)
       sender() ! BoxesAnswerToGenerator(boxesForRequest)
-      val resultBoxes: List[EncryBaseBox] = boxes.diff(boxesForRequest)
+      val resultBoxes: List[EncryBaseBox] = boxes.drop(settings.boxesHolderSettings.qtyOfAskedBoxes)
       logger.info(s"Got new request for new boxes from generator. Gave boxes: ${boxesForRequest.size}. " +
         s"New qty of boxes is: ${resultBoxes.size}.")
       context.become(boxesHolderBehavior(resultBoxes))
