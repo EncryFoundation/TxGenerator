@@ -15,9 +15,8 @@ class Generator(settings: Settings,
                 privKey: PrivateKey25519,
                 walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
-  val observableAddress: Pay2PubKeyAddress = privKey.publicImage.address
   val broadcaster: ActorRef =
-    context.actorOf(Broadcaster.props(settings), s"broadcaster-${observableAddress.address}")
+    context.actorOf(Broadcaster.props(settings), s"broadcaster-${privKey.publicImage.address.address}")
   val boxesHolder: ActorRef =
     context.system.actorOf(BoxesHolder.props(settings, walletStorageReader), "boxesHolder")
   context.system.scheduler.schedule(5.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
