@@ -23,8 +23,6 @@ case class WalletStorage(store: Store, publicKeys: Set[PublicKey25519]) extends 
 }
 
 object WalletStorage {
-
-  val balancesKey: ByteArrayWrapper = ByteArrayWrapper(Algos.hash("balances"))
-
+  val balancesKey: ByteArrayWrapper           = ByteArrayWrapper(Algos.hash("balances"))
   def keyByBoxId(id: ADKey): ByteArrayWrapper = ByteArrayWrapper(id)
 }
