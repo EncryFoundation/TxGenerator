@@ -10,10 +10,10 @@ import scala.concurrent.Future
 
 object NetworkService {
 
-  def commitTransaction(node: Node, txs: EncryTransaction): Future[HttpResponse] =
+  def commitTransaction(node: Node, tx: EncryTransaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = "/transactions/send",
-      entity = HttpEntity(ContentTypes.`application/json`, txs.asJson.toString)
+      entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
     ).withEffectiveUri(securedConnection = false, Host(node.host, node.port)))
 }

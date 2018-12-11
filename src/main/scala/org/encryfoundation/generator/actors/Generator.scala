@@ -46,7 +46,11 @@ class Generator(settings: Settings,
       val boxesForTx: List[MonetaryBox] = innerBoxes.foldLeft(List[MonetaryBox]()) {
         case (txsForTx, oneTxs) =>
           val outputsAmount: Long = txsForTx.map(_.amount).sum
-          if (outputsAmount > settings.transactions.requiredAmount + settings.transactions.feeAmount) txsForTx
+          if (outputsAmount > settings.transactions.requiredAmount + settings.transactions.feeAmount) {
+            logger.info(s"Required amount is: ${settings.transactions.requiredAmount + settings.transactions.feeAmount}." +
+              s" Boxes amount is: $outputsAmount")
+            txsForTx
+          }
           else oneTxs :: txsForTx
       }
       val resultsBoxes: List[MonetaryBox] = innerBoxes.diff(boxesForTx)

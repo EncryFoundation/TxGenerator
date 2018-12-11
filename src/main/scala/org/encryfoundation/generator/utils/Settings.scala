@@ -13,8 +13,7 @@ case class Node(host: String, port: Int)
 case class InfluxDBSettings(url: String,
                             login: String,
                             password: String,
-                            udpPort: Int,
-                            enable: Boolean)
+                            udpPort: Int)
 
 case class GeneratorSettings(askBoxesHolderForBoxesPeriod: Int)
 

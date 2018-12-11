@@ -28,5 +28,5 @@ class InfluxActor(settings: Settings) extends Actor with StrictLogging {
 }
 
 object InfluxActor {
-  def props(settings: Settings) = Props(new InfluxActor(settings))
+  def props(settings: Settings): Props = Props(new InfluxActor(settings))
 }
