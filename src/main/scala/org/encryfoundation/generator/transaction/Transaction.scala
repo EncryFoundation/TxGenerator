@@ -119,6 +119,18 @@ object Transaction {
     prepareTransaction(privKey, fee, timestamp, useOutputs, assetIssuingDirective, amount, tokenIdOpt)
   }
 
+  def dataTransactionScratch(privKey: PrivateKey25519,
+                             fee: Long,
+                             timestamp: Long,
+                             useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
+                             contract: CompiledContract,
+                             amount: Long,
+                             data: Array[Byte],
+                             tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
+    val dataDirective: DataDirective = DataDirective(contract.hash, data)
+    prepareTransaction(privKey, fee, timestamp, useOutputs, dataDirective, amount, tokenIdOpt)
+  }
+
   private def prepareTransaction(privKey: PrivateKey25519,
                                  fee: Long,
                                  timestamp: Long,
