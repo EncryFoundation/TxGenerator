@@ -67,7 +67,8 @@ class Generator(settings: Settings,
           useOutput,
           PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract,
           settings.transactions.requiredAmount - settings.transactions.feeAmount,
-          utils.Random.randomBytes(1000)
+          utils.Random.randomBytes(settings.transactions.dataTxSize),
+          settings.transactions.numberOfCreatedDirectives
         )
       case settings.transactions.paymentTx =>
         Transaction.defaultPaymentTransaction(
@@ -77,6 +78,7 @@ class Generator(settings: Settings,
           useOutput,
           privKey.publicImage.address.address,
           settings.transactions.requiredAmount - settings.transactions.feeAmount,
+          settings.transactions.numberOfCreatedDirectives
         )
     }
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))

@@ -28,11 +28,11 @@ object EncryProposition {
       .map(EncryProposition.apply)
       .prepare(_.downField("contractHash"))
 
-  def open: EncryProposition = EncryProposition(OpenContract.contract.hash)
-  def heightLocked(height: Int): EncryProposition = EncryProposition(HeightLockedContract(height).contract.hash)
+  def open: EncryProposition                            = EncryProposition(OpenContract.contract.hash)
+  def heightLocked(height: Int): EncryProposition       = EncryProposition(HeightLockedContract(height).contract.hash)
   def pubKeyLocked(pubKey: PublicKey): EncryProposition = EncryProposition(PubKeyLockedContract(pubKey).contract.hash)
-  def addressLocked(address: String): EncryProposition = EncryAddress.resolveAddress(address).map {
-    case p2pk: Pay2PubKeyAddress => EncryProposition(PubKeyLockedContract(p2pk.pubKey).contract.hash)
+  def addressLocked(address: String): EncryProposition  = EncryAddress.resolveAddress(address).map {
+    case p2pk: Pay2PubKeyAddress       => EncryProposition(PubKeyLockedContract(p2pk.pubKey).contract.hash)
     case p2sh: Pay2ContractHashAddress => EncryProposition(p2sh.contractHash)
   }.getOrElse(throw EncryAddress.InvalidAddressException)
 }

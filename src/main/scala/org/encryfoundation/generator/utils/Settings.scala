@@ -24,7 +24,10 @@ case class WalletSettings(password: String)
 
 case class TransactionsSettings(numberOfDataTxs: Int,
                                 totalNumberOfTxs: Int,
+                                numberOfRequestedBoxes: Int,
                                 requiredAmount: Int,
                                 feeAmount: Int,
                                 dataTx: String,
-                                paymentTx: String)
+                                paymentTx: String,
+                                dataTxSize: Int,
+                                numberOfCreatedDirectives: Int)

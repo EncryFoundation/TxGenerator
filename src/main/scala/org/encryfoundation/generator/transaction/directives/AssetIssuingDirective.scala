@@ -56,7 +56,7 @@ object AssetIssuingDirectiveSerializer extends Serializer[AssetIssuingDirective]
 
   override def parseBytes(bytes: Array[Byte]): Try[AssetIssuingDirective] = Try {
     val contractHash: ContractHash = bytes.take(Constants.DigestLength)
-    val amount: Long = Longs.fromByteArray(bytes.slice(Constants.DigestLength, Constants.DigestLength + 8))
+    val amount: Long               = Longs.fromByteArray(bytes.slice(Constants.DigestLength, Constants.DigestLength + 8))
     AssetIssuingDirective(contractHash, amount)
   }
 }

@@ -91,9 +91,13 @@ object Transaction {
                                 useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                 recipient: String,
                                 amount: Long,
+                                numberOfCreatedDirectives: Int = 1,
                                 tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val transferDirective: TransferDirective = TransferDirective(recipient, amount, tokenIdOpt)
-    prepareTransaction(privKey, fee, timestamp, useOutputs, transferDirective, amount, tokenIdOpt)
+    val directives: IndexedSeq[TransferDirective] =
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[TransferDirective]) { case (directivesAll, _) =>
+        directivesAll :+ TransferDirective(recipient, amount / numberOfCreatedDirectives, tokenIdOpt)
+      }
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
   def scriptedAssetTransactionScratch(privKey: PrivateKey25519,
@@ -102,9 +106,13 @@ object Transaction {
                                       useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                       contract: CompiledContract,
                                       amount: Long,
+                                      numberOfCreatedDirectives: Int = 1,
                                       tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val scriptedAssetDirective: ScriptedAssetDirective = ScriptedAssetDirective(contract.hash, amount, tokenIdOpt)
-    prepareTransaction(privKey, fee, timestamp, useOutputs, scriptedAssetDirective, amount, tokenIdOpt)
+    val directives: IndexedSeq[ScriptedAssetDirective] =
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[ScriptedAssetDirective]) { case (directivesAll, _) =>
+        directivesAll :+ ScriptedAssetDirective(contract.hash, amount, tokenIdOpt)
+      }
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
   def assetIssuingTransactionScratch(privKey: PrivateKey25519,
@@ -113,9 +121,13 @@ object Transaction {
                                      useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                      contract: CompiledContract,
                                      amount: Long,
+                                     numberOfCreatedDirectives: Int = 1,
                                      tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val assetIssuingDirective: AssetIssuingDirective = AssetIssuingDirective(contract.hash, amount)
-    prepareTransaction(privKey, fee, timestamp, useOutputs, assetIssuingDirective, amount, tokenIdOpt)
+    val directives: IndexedSeq[AssetIssuingDirective] =
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[AssetIssuingDirective]) { case (directivesAll, _) =>
+        directivesAll :+ AssetIssuingDirective(contract.hash, amount)
+      }
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
   def dataTransactionScratch(privKey: PrivateKey25519,
@@ -125,16 +137,20 @@ object Transaction {
                              contract: CompiledContract,
                              amount: Long,
                              data: Array[Byte],
+                             numberOfCreatedDirectives: Int = 1,
                              tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val dataDirective: DataDirective = DataDirective(contract.hash, data)
-    prepareTransaction(privKey, fee, timestamp, useOutputs, dataDirective, amount, tokenIdOpt)
+    val directives: IndexedSeq[DataDirective] =
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[DataDirective]) { case (directivesAll, _) =>
+        directivesAll :+ DataDirective(contract.hash, data)
+      }
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
   private def prepareTransaction(privKey: PrivateKey25519,
                                  fee: Long,
                                  timestamp: Long,
                                  useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
-                                 directive: Directive,
+                                 directivesSeq: IndexedSeq[Directive],
                                  amount: Long,
                                  tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
 
@@ -162,8 +178,8 @@ object Transaction {
     if (change < 0) throw new RuntimeException("Transaction impossible: required amount is bigger than available")
 
     val directives: IndexedSeq[Directive] =
-      if (change > 0) IndexedSeq(directive, TransferDirective(pubKey.address.address, change, tokenIdOpt))
-      else IndexedSeq(directive)
+      if (change > 0) directivesSeq :+ TransferDirective(pubKey.address.address, change, tokenIdOpt)
+      else directivesSeq
 
     val uTransaction: UnsignedEncryTransaction = UnsignedEncryTransaction(fee, timestamp, uInputs, directives)
     val signature: Signature25519              = privKey.sign(uTransaction.messageToSign)

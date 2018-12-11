@@ -25,9 +25,9 @@ class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) 
       logger.info(s"Got new request for new boxes from DB from local. Qty of new boxes is: ${newBoxesFromDB.size}.")
       context.become(boxesHolderBehavior(newBoxesFromDB))
     case AskBoxesFromGenerator =>
-      val boxesForRequest: List[EncryBaseBox] = boxes.take(settings.transactions.totalNumberOfTxs)
+      val boxesForRequest: List[EncryBaseBox] = boxes.take(settings.transactions.numberOfRequestedBoxes)
       sender() ! BoxesAnswerToGenerator(boxesForRequest)
-      val resultBoxes: List[EncryBaseBox] = boxes.drop(settings.transactions.totalNumberOfTxs)
+      val resultBoxes: List[EncryBaseBox] = boxes.drop(settings.transactions.numberOfRequestedBoxes)
       logger.info(s"Got new request for new boxes from generator. Gave boxes: ${boxesForRequest.size}. " +
         s"New qty of boxes is: ${resultBoxes.size}.")
       context.become(boxesHolderBehavior(resultBoxes))

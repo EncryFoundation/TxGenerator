@@ -35,7 +35,7 @@ object Directive {
           case DataDirective.TypeId          => DataDirective.jsonDecoder(c)
           case _                             => Left(DecodingFailure("Incorrect directive typeID", c.history))
         }
-        case Left(_)                         => Left(DecodingFailure("None typeId", c.history))
+        case Left(_) => Left(DecodingFailure("None typeId", c.history))
       }
     }
   }

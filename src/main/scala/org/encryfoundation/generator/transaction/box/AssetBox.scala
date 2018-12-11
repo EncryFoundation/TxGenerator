@@ -16,7 +16,7 @@ case class AssetBox(override val proposition: EncryProposition,
                     override val amount: Long,
                     tokenIdOpt: Option[TokenId] = None) extends EncryBox[EncryProposition] with MonetaryBox {
 
-  override val typeId: Byte = AssetBox.TypeId
+  override val typeId: Byte     = AssetBox.TypeId
 
   lazy val isIntrinsic: Boolean = tokenIdOpt.isEmpty
 }
@@ -26,19 +26,20 @@ object AssetBox {
   val TypeId: Byte = 1.toByte
 
   implicit val jsonEncoder: Encoder[AssetBox] = (bx: AssetBox) => Map(
-    "type" -> TypeId.asJson,
-    "id" -> Algos.encode(bx.id).asJson,
+    "type"        -> TypeId.asJson,
+    "id"          -> Algos.encode(bx.id).asJson,
     "proposition" -> bx.proposition.asJson,
-    "nonce" -> bx.nonce.asJson,
-    "value" -> bx.amount.asJson,
-    "tokenId" -> bx.tokenIdOpt.map(id => Algos.encode(id)).asJson
+    "nonce"       -> bx.nonce.asJson,
+    "value"       -> bx.amount.asJson,
+    "tokenId"     -> bx.tokenIdOpt.map(id => Algos.encode(id)).asJson
   ).asJson
 
   implicit val jsonDecoder: Decoder[AssetBox] = (c: HCursor) => for {
-    nonce <- c.downField("nonce").as[Long]
+    nonce       <- c.downField("nonce").as[Long]
     proposition <- c.downField("proposition").as[EncryProposition]
-    value <- c.downField("value").as[Long]
-    tokenIdOpt <- c.downField("tokenId").as[Option[TokenId]](Decoder.decodeOption(Decoder.decodeString.emapTry(Algos.decode)))
+    value       <- c.downField("value").as[Long]
+    tokenIdOpt  <- c.downField("tokenId")
+      .as[Option[TokenId]](Decoder.decodeOption(Decoder.decodeString.emapTry(Algos.decode)))
   } yield AssetBox(proposition, nonce, value, tokenIdOpt)
 }
 
@@ -56,14 +57,13 @@ object AssetBoxSerializer extends Serializer[AssetBox] {
   }
 
   override def parseBytes(bytes: Array[Byte]): Try[AssetBox] = Try {
-    val propositionLen: Short = Shorts.fromByteArray(bytes.take(2))
-    val iBytes: Array[Byte] = bytes.drop(2)
+    val propositionLen: Short         = Shorts.fromByteArray(bytes.take(2))
+    val iBytes: Array[Byte]           = bytes.drop(2)
     val proposition: EncryProposition = EncryPropositionSerializer.parseBytes(iBytes.take(propositionLen)).get
-    val nonce: Long = Longs.fromByteArray(iBytes.slice(propositionLen, propositionLen + 8))
-    val amount: Long = Longs.fromByteArray(iBytes.slice(propositionLen + 8, propositionLen + 8 + 8))
-    val tokenIdOpt: Option[TokenId] = if ((iBytes.length - (propositionLen + 8 + 8)) == 32) {
-      Some(iBytes.takeRight(32))
-    } else None
+    val nonce: Long                   = Longs.fromByteArray(iBytes.slice(propositionLen, propositionLen + 8))
+    val amount: Long                  = Longs.fromByteArray(iBytes.slice(propositionLen + 8, propositionLen + 8 + 8))
+    val tokenIdOpt: Option[TokenId]   =
+      if ((iBytes.length - (propositionLen + 8 + 8)) == 32) Some(iBytes.takeRight(32)) else None
     AssetBox(proposition, nonce, amount, tokenIdOpt)
   }
 }
