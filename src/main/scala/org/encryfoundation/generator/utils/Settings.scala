@@ -1,21 +1,12 @@
 package org.encryfoundation.generator.utils
 
-import com.typesafe.config.ConfigFactory
-import net.ceedubs.ficus.Ficus._
-import net.ceedubs.ficus.readers.ArbitraryTypeReader._
-
 case class Settings(peers: List[Node],
-                    nodePollingInterval: Int,
                     influxDB: InfluxDBSettings,
-                    accountSettings: List[AccountsSettings],
                     generator: GeneratorSettings,
                     worker: WorkerSettings,
-                    recipientAddress: String)
-
-object Settings {
-  def load: Settings = ConfigFactory.load("local.conf")
-    .withFallback(ConfigFactory.load).as[Settings]
-}
+                    directory: String,
+                    boxesHolderSettings: BoxesHolderSettings,
+                    walletSettings: WalletSettings)
 
 case class Node(host: String, port: Int)
 
@@ -25,8 +16,10 @@ case class InfluxDBSettings(url: String,
                             udpPort: Int,
                             enable: Boolean)
 
-case class AccountsSettings(mnemonic: String, node: Node)
+case class GeneratorSettings(askBoxesHolderForBoxesPeriod: Int, partitionsQty: Int)
 
-case class GeneratorSettings(utxoQty: Int, askUtxoTimeFromLocalPool: Int, partitionsQty: Int)
+case class WorkerSettings(feeAmount: Int, useAmountDivisor: Int)
 
-case class WorkerSettings(feeAmount: Int)
+case class BoxesHolderSettings(askBoxesFromLocalDBPeriod: Int, qtyOfAskedBoxes: Int)
+
+case class WalletSettings(password: String)

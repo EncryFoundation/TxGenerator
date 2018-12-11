@@ -4,25 +4,34 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.actors.{Generator, InfluxActor}
-import org.encryfoundation.generator.transaction.Account
 import org.encryfoundation.generator.utils.Settings
+import org.encryfoundation.generator.wallet.WalletStorageReader
 import scala.concurrent.ExecutionContextExecutor
+import com.typesafe.config.ConfigFactory
+import net.ceedubs.ficus.Ficus._
+import net.ceedubs.ficus.readers.ArbitraryTypeReader._
+import org.encryfoundation.common.Algos
+import org.encryfoundation.common.crypto.PrivateKey25519
 
 object GeneratorApp extends App with StrictLogging {
 
   implicit lazy val system: ActorSystem = ActorSystem()
   implicit lazy val materializer: ActorMaterializer = ActorMaterializer()
   implicit lazy val ec: ExecutionContextExecutor = system.dispatcher
-
-  lazy val settings: Settings = Settings.load
-
-  val generators: Seq[ActorRef] = Account.parseFromSettings(settings.accountSettings).zipWithIndex
-    .map { case (account, idx) =>
-      system.actorOf(Props(classOf[Generator], account), s"generator-$idx")
-    }
+  val settings: Settings =
+    ConfigFactory.load("local.conf").withFallback(ConfigFactory.load()).as[Settings]
 
   if (settings.influxDB.enable) system.actorOf(Props[InfluxActor], "influxDB")
 
-  logger.info("txGen started")
+  logger.info("Transaction generator have been started.")
 
+  val walletStorageReader: WalletStorageReader = WalletStorageReader(settings)
+
+  val privateKeys: List[PrivateKey25519] = walletStorageReader.accounts
+
+  val generators: Seq[ActorRef] = privateKeys.zipWithIndex
+    .map { case (privKey, idx) =>
+      logger.info(s"New generator actor started with privKey: ${Algos.encode(privKey.bytes)}.")
+      system.actorOf(Generator.props(settings, privKey, walletStorageReader), s"generator-$idx")
+    }
 }

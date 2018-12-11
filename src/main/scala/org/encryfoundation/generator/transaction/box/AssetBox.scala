@@ -1,16 +1,20 @@
 package org.encryfoundation.generator.transaction.box
 
+import com.google.common.primitives.{Bytes, Longs, Shorts}
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.Algos
+import org.encryfoundation.common.serialization.Serializer
 import org.encryfoundation.generator.transaction.box.TokenIssuingBox.TokenId
+
+import scala.util.Try
 
 /** Represents monetary asset of some type locked with some `proposition`.
   * `tokenIdOpt = None` if the asset is of intrinsic type. */
 case class AssetBox(override val proposition: EncryProposition,
                     override val nonce: Long,
                     override val amount: Long,
-                    tokenIdOpt: Option[TokenId] = None) extends MonetaryBox {
+                    tokenIdOpt: Option[TokenId] = None) extends EncryBox[EncryProposition] with MonetaryBox {
 
   override val typeId: Byte = AssetBox.TypeId
 
@@ -36,4 +40,30 @@ object AssetBox {
     value <- c.downField("value").as[Long]
     tokenIdOpt <- c.downField("tokenId").as[Option[TokenId]](Decoder.decodeOption(Decoder.decodeString.emapTry(Algos.decode)))
   } yield AssetBox(proposition, nonce, value, tokenIdOpt)
+}
+
+object AssetBoxSerializer extends Serializer[AssetBox] {
+
+  override def toBytes(obj: AssetBox): Array[Byte] = {
+    val propBytes = EncryPropositionSerializer.toBytes(obj.proposition)
+    Bytes.concat(
+      Shorts.toByteArray(propBytes.length.toShort),
+      propBytes,
+      Longs.toByteArray(obj.nonce),
+      Longs.toByteArray(obj.amount),
+      obj.tokenIdOpt.getOrElse(Array.empty)
+    )
+  }
+
+  override def parseBytes(bytes: Array[Byte]): Try[AssetBox] = Try {
+    val propositionLen: Short = Shorts.fromByteArray(bytes.take(2))
+    val iBytes: Array[Byte] = bytes.drop(2)
+    val proposition: EncryProposition = EncryPropositionSerializer.parseBytes(iBytes.take(propositionLen)).get
+    val nonce: Long = Longs.fromByteArray(iBytes.slice(propositionLen, propositionLen + 8))
+    val amount: Long = Longs.fromByteArray(iBytes.slice(propositionLen + 8, propositionLen + 8 + 8))
+    val tokenIdOpt: Option[TokenId] = if ((iBytes.length - (propositionLen + 8 + 8)) == 32) {
+      Some(iBytes.takeRight(32))
+    } else None
+    AssetBox(proposition, nonce, amount, tokenIdOpt)
+  }
 }

@@ -1,39 +1,36 @@
 package org.encryfoundation.generator.actors
 
 import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorRef, Cancellable, OneForOneStrategy, Props, SupervisorStrategy}
+import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, SupervisorStrategy}
 import com.typesafe.scalalogging.StrictLogging
+import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.Pay2PubKeyAddress
-import org.encryfoundation.generator.transaction.box.Box
-import org.encryfoundation.generator.actors.Generator.Utxos
-import org.encryfoundation.generator.actors.UtxoObserver.RequestUtxos
-import org.encryfoundation.generator.transaction.Account
-import org.encryfoundation.generator.GeneratorApp._
+import org.encryfoundation.generator.actors.BoxesHolder.{AskBoxesFromGenerator, BoxesAnswerToGenerator}
+import scala.concurrent.ExecutionContext.Implicits.global
+import org.encryfoundation.generator.utils.Settings
+import org.encryfoundation.generator.wallet.WalletStorageReader
 import scala.concurrent.duration._
 
-class Generator(account: Account) extends Actor with StrictLogging {
+class Generator(settings: Settings,
+                privKey: PrivateKey25519,
+                walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
-  val observableAddress: Pay2PubKeyAddress = account.secret.publicImage.address
-
-  val broadcaster: ActorRef = context
-    .actorOf(Props(classOf[Broadcaster]), s"broadcaster-${observableAddress.address}")
-
-  val observer: ActorRef = context
-    .actorOf(Props(classOf[UtxoObserver], account.sourceNode), s"observer-${observableAddress.address}")
-
-  val askUtxos: Cancellable = context.system.scheduler
-    .schedule(5.seconds, settings.generator.askUtxoTimeFromLocalPool.seconds) {
-      observer ! RequestUtxos(settings.generator.utxoQty)
-      logger.info(s"Generator asked ${settings.generator.utxoQty} from local pool")
-    }
+  val broadcaster: ActorRef =
+    context.actorOf(Broadcaster.props(settings), s"broadcaster-${privKey.publicImage.address.address}")
+  val boxesHolder: ActorRef =
+    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader), "boxesHolder")
+  context.system.scheduler.schedule(5.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
+    boxesHolder ! AskBoxesFromGenerator
+    logger.info(s"Generator asked boxesHolder for new boxes.")
+  }
 
   override def receive: Receive = {
-    case Utxos(outputs) if outputs.nonEmpty =>
+    case BoxesAnswerToGenerator(boxes) if boxes.nonEmpty =>
       val partitionSize: Int =
-        if (outputs.size > settings.generator.partitionsQty * 2) outputs.size / settings.generator.partitionsQty
-        else outputs.size
-      outputs.sliding(partitionSize, partitionSize).foreach { partition =>
-        context.actorOf(Props(classOf[Worker], account.secret, partition, broadcaster))
+        if (boxes.size > settings.generator.partitionsQty * 2) boxes.size / settings.generator.partitionsQty
+        else boxes.size
+      boxes.sliding(partitionSize, partitionSize).foreach { partition =>
+        context.actorOf(Worker.props(privKey, partition, broadcaster, settings))
       }
   }
 
@@ -44,7 +41,6 @@ class Generator(account: Account) extends Actor with StrictLogging {
 }
 
 object Generator {
-
-  case class Utxos(outputs: Seq[Box])
-
+  def props(settings: Settings, privKey: PrivateKey25519, walletStorageReader: WalletStorageReader): Props =
+    Props(new Generator(settings, privKey, walletStorageReader))
 }
