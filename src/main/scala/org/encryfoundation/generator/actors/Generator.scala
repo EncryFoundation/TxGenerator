@@ -28,10 +28,9 @@ class Generator(settings: Settings,
 
   override def receive: Receive = {
     case BoxesAnswerToGenerator(boxes) if boxes.nonEmpty =>
-      val monetaryBoxes: List[MonetaryBox] = boxes.map(_.asInstanceOf[MonetaryBox])
       val lastBoxesAfterGeneratingDataTxs: List[MonetaryBox] = generateNTransactions(
         settings.transactions.numberOfDataTxs,
-        monetaryBoxes,
+        boxes,
         settings.transactions.dataTx
       )
       generateNTransactions(
@@ -39,26 +38,29 @@ class Generator(settings: Settings,
         lastBoxesAfterGeneratingDataTxs,
         settings.transactions.paymentTx
       )
+    case _ => logger.info(s"No boxes in IoDB.")
   }
 
   def generateNTransactions(numberOfTxs: Int, monetaryBoxes: List[MonetaryBox], txsType: String): List[MonetaryBox] =
-    (0 until numberOfTxs).foldLeft(monetaryBoxes) { case (innerBoxes, number) =>
-      val boxesForTx: List[MonetaryBox] = innerBoxes.foldLeft(List[MonetaryBox]()) {
-        case (txsForTx, oneTxs) =>
-          val outputsAmount: Long = txsForTx.map(_.amount).sum
-          if (outputsAmount > settings.transactions.requiredAmount + settings.transactions.feeAmount) {
-            logger.info(s"Required amount is: ${settings.transactions.requiredAmount + settings.transactions.feeAmount}." +
-              s" Boxes amount is: $outputsAmount")
-            txsForTx
-          }
-          else oneTxs :: txsForTx
-      }
-      val resultsBoxes: List[MonetaryBox] = innerBoxes.diff(boxesForTx)
-      logger.info(s"Current number of boxes: ${innerBoxes.size}. Boxes after diff: ${resultsBoxes.size}. " +
-        s"Number of tx is: $number. Tx type is: $txsType")
-      val useOutput: Seq[(MonetaryBox, None.type)] = boxesForTx.map(_ -> None)
-      generateAndSendTransaction(useOutput, txsType)
-      resultsBoxes
+    (0 until numberOfTxs).foldLeft(monetaryBoxes) {
+      case (innerBoxes, number) if innerBoxes.nonEmpty =>
+        val boxesForTx: (List[MonetaryBox], Long) = innerBoxes.foldLeft(List[MonetaryBox](), 0L) {
+          case (txsForTx, oneTxs) =>
+            val outputsAmount: Long = txsForTx._1.map(_.amount).sum
+            if (outputsAmount > settings.transactions.requiredAmount + settings.transactions.feeAmount)
+              (txsForTx._1, outputsAmount)
+            else (oneTxs :: txsForTx._1, outputsAmount)
+        }
+        val resultsBoxes: List[MonetaryBox] = innerBoxes.diff(boxesForTx._1)
+        logger.info(s"Current number of boxes: ${innerBoxes.size}. Boxes after diff: ${resultsBoxes.size}. " +
+          s"Number of tx is: $number. Tx type is: $txsType")
+        val useOutput: Seq[(MonetaryBox, None.type)] = boxesForTx._1.map(_ -> None)
+        if (boxesForTx._2 > settings.transactions.requiredAmount + settings.transactions.feeAmount)
+          generateAndSendTransaction(useOutput, txsType)
+        resultsBoxes
+      case _ =>
+        logger.info(s"Not enough boxes for new tx.")
+        List()
     }
 
   def generateAndSendTransaction(useOutput: Seq[(MonetaryBox, None.type)], txsType: String): Future[Unit] = Future {

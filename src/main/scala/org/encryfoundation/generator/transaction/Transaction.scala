@@ -1,6 +1,7 @@
 package org.encryfoundation.generator.transaction
 
 import com.google.common.primitives.{Bytes, Longs}
+import com.typesafe.scalalogging.StrictLogging
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.crypto.{PrivateKey25519, PublicKey25519, Signature25519}
@@ -83,7 +84,7 @@ object UnsignedEncryTransaction {
     ))
 }
 
-object Transaction {
+object Transaction extends StrictLogging {
 
   def defaultPaymentTransaction(privKey: PrivateKey25519,
                                 fee: Long,
@@ -156,26 +157,28 @@ object Transaction {
 
     val pubKey: PublicKey25519 = privKey.publicImage
 
-    val outputs: IndexedSeq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])] = useOutputs
-      .sortWith(_._1.amount > _._1.amount)
-      .foldLeft(IndexedSeq.empty[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])]) { case (acc, e) =>
-        if (acc.map(_._1.amount).sum < amount) acc :+ e else acc
+    val outputs: IndexedSeq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])] =
+      useOutputs.foldLeft(IndexedSeq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])]()) {
+        case (seq, element) => if (seq.map(_._1.amount).sum < amount + fee) seq :+ element else seq
       }
 
-    val uInputs: IndexedSeq[Input] = outputs
-      .map { case (o, co) =>
-        Input.unsigned(
-          o.id,
-          co match {
-            case Some((ct, _)) => Left(ct)
-            case None => Right(PubKeyLockedContract(pubKey.pubKeyBytes))
-          }
-        )
-      }
+    val uInputs: IndexedSeq[Input] = outputs.map { case (box, contractOpt) =>
+      Input.unsigned(
+        box.id,
+        contractOpt match {
+          case Some((ct, _)) => Left(ct)
+          case None => Right(PubKeyLockedContract(pubKey.pubKeyBytes))
+        }
+      )
+    }
 
     val change: Long = outputs.map(_._1.amount).sum - (amount + fee)
 
-    if (change < 0) throw new RuntimeException("Transaction impossible: required amount is bigger than available")
+    if (change < 0) {
+      logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
+      println(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
+      throw new RuntimeException("Transaction impossible: required amount is bigger than available")
+    }
 
     val directives: IndexedSeq[Directive] =
       if (change > 0) directivesSeq :+ TransferDirective(pubKey.address.address, change, tokenIdOpt)
