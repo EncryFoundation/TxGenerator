@@ -12,9 +12,8 @@ import org.encryfoundation.common.Algos
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import org.encryfoundation.generator.transaction.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
-import org.encryfoundation.generator.transaction.box.MonetaryBox
+import org.encryfoundation.generator.transaction.box.{Box, EncryBaseBox, MonetaryBox}
 
-/** Completely assembled atomic state modifier. */
 case class EncryTransaction(fee: Long,
                             timestamp: Long,
                             inputs: IndexedSeq[Input],
@@ -23,6 +22,8 @@ case class EncryTransaction(fee: Long,
 
   val messageToSign: Array[Byte] = UnsignedEncryTransaction.bytesToSign(fee, timestamp, inputs, directives)
   lazy val id: Array[Byte]       = Blake2b256.hash(messageToSign)
+  lazy val newBoxes: IndexedSeq[Box] =
+    directives.zipWithIndex.flatMap { case (d, idx) => d.boxes(Digest32 !@@ id, idx) }
 }
 
 object EncryTransaction {
@@ -53,8 +54,6 @@ object EncryTransaction {
   }
 }
 
-/** Unsigned version of EncryTransaction (without any
-  * proofs for which interactive message is required) */
 case class UnsignedEncryTransaction(fee: Long,
                                     timestamp: Long,
                                     inputs: IndexedSeq[Input],
@@ -176,7 +175,6 @@ object Transaction extends StrictLogging {
 
     if (change < 0) {
       logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
-      println(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
       throw new RuntimeException("Transaction impossible: required amount is bigger than available")
     }
 
@@ -190,5 +188,4 @@ object Transaction extends StrictLogging {
 
     uTransaction.toSigned(proofs, Some(Proof(BoxedValue.Signature25519Value(signature.bytes.toList))))
   }
-
 }

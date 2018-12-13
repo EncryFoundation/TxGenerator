@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.PubKeyLockedContract
-import org.encryfoundation.generator.actors.BoxesHolder.{AskBoxesFromGenerator, BoxesAnswerToGenerator}
+import org.encryfoundation.generator.actors.BoxesHolder.{AskBoxesFromGenerator, BoxesAnswerToGenerator, ReturnedBoxes}
 import org.encryfoundation.generator.transaction.{EncryTransaction, Transaction}
 import org.encryfoundation.generator.transaction.box.MonetaryBox
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,11 +33,12 @@ class Generator(settings: Settings,
         boxes,
         settings.transactions.dataTx
       )
-      generateNTransactions(
+      val lastBoxesAfterGenerationPaymentTxs: List[MonetaryBox] = generateNTransactions(
         settings.transactions.totalNumberOfTxs - settings.transactions.numberOfDataTxs,
         lastBoxesAfterGeneratingDataTxs,
         settings.transactions.paymentTx
       )
+      boxesHolder ! ReturnedBoxes(lastBoxesAfterGenerationPaymentTxs)
     case _ => logger.info(s"No boxes in IoDB.")
   }
 
@@ -87,6 +88,9 @@ class Generator(settings: Settings,
           settings.transactions.numberOfCreatedDirectives
         )
     }
+    logger.info(s"tx id ${Algos.encode(transaction.id)}. " +
+      s"Input: ${transaction.inputs.map(x => Algos.encode(x.boxId))}. " +
+      s"Output ${transaction.newBoxes.map(k => Algos.encode(k.id))}")
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
     logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}")
   }

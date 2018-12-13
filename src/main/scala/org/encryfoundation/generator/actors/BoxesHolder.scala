@@ -11,26 +11,26 @@ import scala.concurrent.duration._
 
 class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
+  var pool: LocalPool                = LocalPool()
+  var walletStorage: WalletStorage   = walletStorageReader.createWalletStorage
   val defaultAskTime: FiniteDuration = settings.boxesHolderSettings.askBoxesFromLocalDBPeriod.seconds
   context.system.scheduler.schedule(5.seconds, defaultAskTime, self, BoxesRequestFromLocal)
 
-  override def receive: Receive = boxesHolderBehavior()
-
-  def boxesHolderBehavior(boxes: List[MonetaryBox] = List(),
-                          walletStorage: WalletStorage = walletStorageReader.createWalletStorage,
-                          localPoolOfUsedBoxes: List[MonetaryBox] = List()): Receive = {
+  override def receive: Receive = {
     case BoxesRequestFromLocal =>
-      val newWalletStorage: WalletStorage = walletStorageReader.createWalletStorage
-      val newBoxesFromDB: List[MonetaryBox] = walletStorage.allBoxes.map(_.asInstanceOf[MonetaryBox]).toList
-      logger.info(s"Got new request for new boxes from DB from local. Qty of new boxes is: ${newBoxesFromDB.size}.")
-      context.become(boxesHolderBehavior(newBoxesFromDB, newWalletStorage))
+      walletStorage = walletStorageReader.createWalletStorage
+      pool = pool.updatePool(walletStorage.allBoxes.map(_.asInstanceOf[MonetaryBox]).toList)
+      logger.info(s"New local pool after getting new outputs: $pool")
     case AskBoxesFromGenerator =>
-      val boxesForRequest: List[MonetaryBox] = boxes.take(settings.transactions.numberOfRequestedBoxes)
-      sender() ! BoxesAnswerToGenerator(boxesForRequest)
-      val resultBoxes: List[MonetaryBox] = boxes.drop(settings.transactions.numberOfRequestedBoxes)
-      logger.info(s"Got new request for new boxes from generator. Gave boxes: ${boxesForRequest.size}. " +
-        s"New qty of boxes is: ${resultBoxes.size}.")
-      context.become(boxesHolderBehavior(resultBoxes))
+      logger.info(s"Pool before sending outputs: $pool")
+      val getOutputsResult: (LocalPool, List[MonetaryBox]) =
+        pool.getOutputs(settings.transactions.numberOfRequestedBoxes)
+      pool = getOutputsResult._1
+      sender() ! BoxesAnswerToGenerator(getOutputsResult._2)
+      logger.info(s"Pool after sending outputs: $pool")
+    case ReturnedBoxes(returnedBoxes) =>
+      pool = pool.addUnusedToPool(returnedBoxes)
+      logger.info(s"Pool after backing unused: $pool")
   }
 }
 
@@ -42,4 +42,5 @@ object BoxesHolder {
   case object BoxesRequestFromLocal
   case object AskBoxesFromGenerator
   case class  BoxesAnswerToGenerator(boxes: List[MonetaryBox])
+  case class  ReturnedBoxes(boxes: List[MonetaryBox])
 }
