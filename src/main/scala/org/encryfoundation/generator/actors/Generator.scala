@@ -88,9 +88,6 @@ class Generator(settings: Settings,
           settings.transactions.numberOfCreatedDirectives
         )
     }
-    logger.info(s"tx id ${Algos.encode(transaction.id)}. " +
-      s"Input: ${transaction.inputs.map(x => Algos.encode(x.boxId))}. " +
-      s"Output ${transaction.newBoxes.map(k => Algos.encode(k.id))}")
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
     logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}")
   }
