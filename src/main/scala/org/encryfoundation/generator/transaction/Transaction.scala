@@ -156,12 +156,7 @@ object Transaction extends StrictLogging {
 
     val pubKey: PublicKey25519 = privKey.publicImage
 
-    val outputs: IndexedSeq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])] =
-      useOutputs.foldLeft(IndexedSeq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])]()) {
-        case (seq, element) => if (seq.map(_._1.amount).sum < amount + fee) seq :+ element else seq
-      }
-
-    val uInputs: IndexedSeq[Input] = outputs.map { case (box, contractOpt) =>
+    val uInputs: IndexedSeq[Input] = useOutputs.toIndexedSeq.map { case (box, contractOpt) =>
       Input.unsigned(
         box.id,
         contractOpt match {
@@ -171,7 +166,7 @@ object Transaction extends StrictLogging {
       )
     }
 
-    val change: Long = outputs.map(_._1.amount).sum - (amount + fee)
+    val change: Long = useOutputs.map(_._1.amount).sum - (amount + fee)
 
     if (change < 0) {
       logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")

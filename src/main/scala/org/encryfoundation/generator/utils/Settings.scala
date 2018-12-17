@@ -17,16 +17,13 @@ case class InfluxDBSettings(url: String,
 
 case class GeneratorSettings(askBoxesHolderForBoxesPeriod: Int)
 
-case class BoxesHolderSettings(askBoxesFromLocalDBPeriod: Int)
+case class BoxesHolderSettings(getBoxesFromIODbPeriod: Int, periodOfCleaningPool: Int)
 
 case class WalletSettings(password: String)
 
 case class TransactionsSettings(numberOfDataTxs: Int,
-                                totalNumberOfTxs: Int,
-                                numberOfRequestedBoxes: Int,
+                                numberOfMonetaryTxs: Int,
                                 requiredAmount: Int,
                                 feeAmount: Int,
-                                dataTx: String,
-                                paymentTx: String,
                                 dataTxSize: Int,
                                 numberOfCreatedDirectives: Int)
