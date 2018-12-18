@@ -56,7 +56,11 @@ class Generator(settings: Settings,
       )
     }
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
-    logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}")
+    logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}." +
+      s" Tx type is: ${txsType match {
+        case 1 => "DataTx"
+        case 2 => "MonetaryTx"
+      }}")
   }
 }
 
