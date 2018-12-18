@@ -30,18 +30,17 @@ class Generator(settings: Settings,
 
   override def receive: Receive = {
     case BoxesForGenerator(boxes, txType) if boxes.nonEmpty =>
-      val usedOutputs: List[(AssetBox, None.type)] = boxes.map(_ -> None)
-      generateAndSendTransaction(usedOutputs, txType)
+      generateAndSendTransaction(boxes, txType)
     case _ => logger.info(s"No boxes in IoDB.")
   }
 
-  def generateAndSendTransaction(useOutput: Seq[(MonetaryBox, None.type)], txsType: Int): Future[Unit] = Future {
+  def generateAndSendTransaction(boxes: List[AssetBox], txsType: Int): Future[Unit] = Future {
     val transaction: EncryTransaction = txsType match {
       case 1 => Transaction.dataTransactionScratch(
         privKey,
         settings.transactions.feeAmount,
         System.currentTimeMillis(),
-        useOutput,
+        boxes.map(_ -> None),
         PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract,
         settings.transactions.requiredAmount - settings.transactions.feeAmount,
         utils.Random.randomBytes(settings.transactions.dataTxSize),
@@ -51,7 +50,7 @@ class Generator(settings: Settings,
         privKey,
         settings.transactions.feeAmount,
         System.currentTimeMillis(),
-        useOutput,
+        boxes.map(_ -> None),
         privKey.publicImage.address.address,
         settings.transactions.requiredAmount - settings.transactions.feeAmount,
         settings.transactions.numberOfCreatedDirectives
