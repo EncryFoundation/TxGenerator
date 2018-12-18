@@ -4,6 +4,7 @@ import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import java.net._
+import org.encryfoundation.generator.actors.InfluxActor.{NewAndUsedOutputsInGeneratorMempool, SendedBatches}
 import org.encryfoundation.generator.utils.Settings
 
 class InfluxActor(settings: Settings) extends Actor with StrictLogging {
