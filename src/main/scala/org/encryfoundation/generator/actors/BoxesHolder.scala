@@ -3,8 +3,9 @@ package org.encryfoundation.generator.actors
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.Algos
+import org.encryfoundation.generator.GeneratorApp.system
 import org.encryfoundation.generator.actors.BoxesHolder._
-import org.encryfoundation.generator.actors.InfluxActor.{NewAndUsedOutputsInGeneratorMempool, SendedBatches}
+import org.encryfoundation.generator.actors.InfluxActor.{FindBatchesTimeSeconds, NewAndUsedOutputsInGeneratorMempool, SentBatches}
 import org.encryfoundation.generator.transaction.box.AssetBox
 import org.encryfoundation.generator.utils.Settings
 import org.encryfoundation.generator.wallet.WalletStorageReader
@@ -54,7 +55,7 @@ class BoxesHolder(settings: Settings,
       logger.info(s"Number of batches before diff: ${lastBatches.size}.")
       val resultedBatches: List[Batch] = lastBatches.diff(batchesForMonetaryTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
-      influx.foreach(_ ! SendedBatches(pool.size - resultedBatches.size))
+      influx.foreach(_ ! SentBatches(pool.size - resultedBatches.size))
       context.become(boxesHolderBehavior(resultedBatches, usedBoxes))
 
     case TimeToClean =>
@@ -63,6 +64,7 @@ class BoxesHolder(settings: Settings,
   }
 
   def findBatchesOneForEachTransaction(list: List[AssetBox]): List[Batch] = {
+    val startTime: Long = System.currentTimeMillis()
     val batchesList = list.foldLeft(List[Batch](), Batch(List()), 0L) { case ((listBatches, batch, amount), box) =>
       val newBatch: List[AssetBox] = box :: batch.boxes
       val newAmount: Long = amount + box.amount
@@ -70,6 +72,8 @@ class BoxesHolder(settings: Settings,
         (Batch(newBatch) :: listBatches, Batch(List()), 0)
       else (listBatches, Batch(newBatch), newAmount)
     }
+    system.actorSelection("/user/generator/influxDB") !
+      FindBatchesTimeSeconds((System.currentTimeMillis() - startTime) / 1000)
     batchesList._1
   }
 

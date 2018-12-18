@@ -93,10 +93,11 @@ object Transaction extends StrictLogging {
                                 amount: Long,
                                 numberOfCreatedDirectives: Int = 1,
                                 tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val directives: IndexedSeq[TransferDirective] =
+    val directives: IndexedSeq[TransferDirective] = if (useOutputs.size < 10)
       (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[TransferDirective]) { case (directivesAll, _) =>
         directivesAll :+ TransferDirective(recipient, amount / numberOfCreatedDirectives, tokenIdOpt)
       }
+    else IndexedSeq(TransferDirective(recipient, amount - fee, tokenIdOpt))
     prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 

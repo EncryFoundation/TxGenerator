@@ -25,6 +25,6 @@ object GeneratorApp extends App with StrictLogging {
 
   privateKeys.zipWithIndex.map { case (privKey, idx) =>
       logger.info(s"New generator actor started with privKey: ${Algos.encode(privKey.bytes)}.")
-      system.actorOf(Generator.props(settings, privKey, walletStorageReader), s"generator-$idx")
+      system.actorOf(Generator.props(settings, privKey, walletStorageReader), "generator")
     }
 }

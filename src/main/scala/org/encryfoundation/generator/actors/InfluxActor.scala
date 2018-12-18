@@ -4,7 +4,7 @@ import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.influxdb.{InfluxDB, InfluxDBFactory}
 import java.net._
-import org.encryfoundation.generator.actors.InfluxActor.{NewAndUsedOutputsInGeneratorMempool, SendedBatches}
+import org.encryfoundation.generator.actors.InfluxActor._
 import org.encryfoundation.generator.utils.Settings
 
 class InfluxActor(settings: Settings) extends Actor with StrictLogging {
@@ -27,8 +27,14 @@ class InfluxActor(settings: Settings) extends Actor with StrictLogging {
     case NewAndUsedOutputsInGeneratorMempool(newO, usedO) =>
       influxDB.write(udpPort, s"txsStatFromGenerator,nodeName=$nodeName value=$newO,used=$usedO")
 
-    case SendedBatches(num) =>
+    case SentBatches(num) =>
       influxDB.write(udpPort, s"numberOfSendedBatches,nodeName=$nodeName value=$num")
+
+    case GetAllTimeSeconds(time) =>
+      influxDB.write(udpPort, s"getAllTime,nodeName=$nodeName value=$time")
+
+    case FindBatchesTimeSeconds(time) =>
+      influxDB.write(udpPort, s"findBatchesTime,nodeName=$nodeName value=$time")
   }
 }
 
@@ -36,5 +42,7 @@ object InfluxActor {
   def props(settings: Settings): Props = Props(new InfluxActor(settings))
 
   case class NewAndUsedOutputsInGeneratorMempool(newO: Int, usedO: Int)
-  case class SendedBatches(num: Int)
+  case class SentBatches(num: Int)
+  case class GetAllTimeSeconds(time: Long)
+  case class FindBatchesTimeSeconds(time: Long)
 }

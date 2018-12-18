@@ -7,7 +7,7 @@ import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.PubKeyLockedContract
 import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.transaction.{EncryTransaction, Transaction}
-import org.encryfoundation.generator.transaction.box.{AssetBox, MonetaryBox}
+import org.encryfoundation.generator.transaction.box.AssetBox
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.encryfoundation.generator.utils.{NetworkService, Settings}
 import org.encryfoundation.generator.wallet.WalletStorageReader
@@ -20,7 +20,7 @@ class Generator(settings: Settings,
                 walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
   val influx: Option[ActorRef] =
-    settings.influxDB.map(_ => context.system.actorOf(InfluxActor.props(settings), "influxDB"))
+    settings.influxDB.map(_ => context.actorOf(InfluxActor.props(settings), "influxDB"))
   val boxesHolder: ActorRef =
     context.system.actorOf(BoxesHolder.props(settings, walletStorageReader, influx), "boxesHolder")
   context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
