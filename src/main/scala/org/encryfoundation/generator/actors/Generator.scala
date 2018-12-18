@@ -19,8 +19,10 @@ class Generator(settings: Settings,
                 privKey: PrivateKey25519,
                 walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
+  val influx: Option[ActorRef] =
+    settings.influxDB.map(_ => context.system.actorOf(InfluxActor.props(settings), "influxDB"))
   val boxesHolder: ActorRef =
-    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader), "boxesHolder")
+    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader, influx), "boxesHolder")
   context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
     boxesHolder ! AskBoxesFromGenerator
     logger.info(s"Generator asked boxesHolder for new boxes.")

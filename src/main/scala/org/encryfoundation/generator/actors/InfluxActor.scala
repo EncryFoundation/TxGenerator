@@ -23,10 +23,17 @@ class InfluxActor(settings: Settings) extends Actor with StrictLogging {
   }
 
   override def receive: Receive = {
-    case _ =>
+    case NewAndUsedOutputsInGeneratorMempool(newO, usedO) =>
+      influxDB.write(udpPort, s"txsStatFromGenerator,nodeName=$nodeName value=$newO,used=$usedO")
+
+    case SendedBatches(num) =>
+      influxDB.write(udpPort, s"numberOfSendedBatches,nodeName=$nodeName value=$num")
   }
 }
 
 object InfluxActor {
   def props(settings: Settings): Props = Props(new InfluxActor(settings))
+
+  case class NewAndUsedOutputsInGeneratorMempool(newO: Int, usedO: Int)
+  case class SendedBatches(num: Int)
 }

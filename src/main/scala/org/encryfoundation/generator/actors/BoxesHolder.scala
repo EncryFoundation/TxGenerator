@@ -1,17 +1,21 @@
 package org.encryfoundation.generator.actors
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.actors.BoxesHolder._
+import org.encryfoundation.generator.actors.InfluxActor.{NewAndUsedOutputsInGeneratorMempool, SendedBatches}
 import org.encryfoundation.generator.transaction.box.AssetBox
 import org.encryfoundation.generator.utils.Settings
 import org.encryfoundation.generator.wallet.WalletStorageReader
+
 import scala.collection.immutable.TreeSet
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
-class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
+class BoxesHolder(settings: Settings,
+                  walletStorageReader: WalletStorageReader,
+                  influx: Option[ActorRef]) extends Actor with StrictLogging {
 
   val cleanPeriod: FiniteDuration = settings.boxesHolderSettings.periodOfCleaningPool.seconds
   context.system.scheduler
@@ -30,6 +34,7 @@ class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) 
       logger.info(s"Number of collected transactions is: ${castedToAssetBoxes.size}.")
       val foundResult: (List[AssetBox], TreeSet[String]) =
         findDifferenceBetweenUsedAndNewBoxes(usedBoxes, castedToAssetBoxes)
+      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(foundResult._1.size, foundResult._2.size))
       logger.info(s"Number of foundResult is: ${foundResult._1.size},  ${foundResult._2.size}.")
       val batchesPool: List[Batch] = findBatchesOneForEachTransaction(foundResult._1)
       logger.info(s"Number of batches is: ${batchesPool.size}")
@@ -49,6 +54,7 @@ class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) 
       logger.info(s"Number of batches before diff: ${lastBatches.size}.")
       val resultedBatches: List[Batch] = lastBatches.diff(batchesForMonetaryTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
+      influx.foreach(_ ! SendedBatches(pool.size - resultedBatches.size))
       context.become(boxesHolderBehavior(resultedBatches, usedBoxes))
 
     case TimeToClean =>
@@ -80,17 +86,12 @@ class BoxesHolder(settings: Settings, walletStorageReader: WalletStorageReader) 
 
 object BoxesHolder {
 
-  def props(settings: Settings, walletStorageReader: WalletStorageReader): Props =
-    Props(new BoxesHolder(settings, walletStorageReader))
+  def props(settings: Settings, walletStorageReader: WalletStorageReader, influx: Option[ActorRef]): Props =
+    Props(new BoxesHolder(settings, walletStorageReader, influx))
 
   case object RequestBoxesFromIODb
-
   case object AskBoxesFromGenerator
-
   case object TimeToClean
-
-  case class BoxesForGenerator(list: List[AssetBox], txType: Int)
-
-  case class Batch(boxes: List[AssetBox])
-
+  case class  BoxesForGenerator(list: List[AssetBox], txType: Int)
+  case class  Batch(boxes: List[AssetBox])
 }

@@ -12,7 +12,7 @@ import org.encryfoundation.common.Algos
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import org.encryfoundation.generator.transaction.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
-import org.encryfoundation.generator.transaction.box.{Box, EncryBaseBox, MonetaryBox}
+import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
 
 case class EncryTransaction(fee: Long,
                             timestamp: Long,
