@@ -9,7 +9,6 @@ import org.encryfoundation.generator.actors.InfluxActor.{FindBatchesTimeSeconds,
 import org.encryfoundation.generator.transaction.box.AssetBox
 import org.encryfoundation.generator.utils.Settings
 import org.encryfoundation.generator.wallet.WalletStorageReader
-
 import scala.collection.immutable.TreeSet
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -37,7 +36,7 @@ class BoxesHolder(settings: Settings,
         findDifferenceBetweenUsedAndNewBoxes(usedBoxes, castedToAssetBoxes)
       influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(foundResult._1.size, foundResult._2.size))
       logger.info(s"Number of foundResult is: ${foundResult._1.size},  ${foundResult._2.size}.")
-      val batchesPool: List[Batch] = findBatchesOneForEachTransaction(foundResult._1)
+      val batchesPool: List[Batch] = batchesForTransactions(foundResult._1)
       logger.info(s"Number of batches is: ${batchesPool.size}")
       context.become(boxesHolderBehavior(batchesPool ::: pool, foundResult._2))
 
@@ -63,7 +62,7 @@ class BoxesHolder(settings: Settings,
       context.become(boxesHolderBehavior(pool))
   }
 
-  def findBatchesOneForEachTransaction(list: List[AssetBox]): List[Batch] = {
+  def batchesForTransactions(list: List[AssetBox]): List[Batch] = {
     val startTime: Long = System.currentTimeMillis()
     val batchesList = list.foldLeft(List[Batch](), Batch(List()), 0L) { case ((listBatches, batch, amount), box) =>
       val newBatch: List[AssetBox] = box :: batch.boxes
