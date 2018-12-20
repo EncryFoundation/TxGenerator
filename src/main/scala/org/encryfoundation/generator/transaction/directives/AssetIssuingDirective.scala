@@ -13,8 +13,8 @@ import scala.util.Try
 
 case class AssetIssuingDirective(contractHash: ContractHash, amount: Long) extends Directive {
 
-  override type M = AssetIssuingDirective
-  override val typeId: Byte = AssetIssuingDirective.TypeId
+  override type M                    = AssetIssuingDirective
+  override val typeId: Byte          = AssetIssuingDirective.TypeId
   override lazy val isValid: Boolean = amount > 0
 
   override def boxes(digest: Digest32, idx: Int): Seq[Box] =
@@ -33,15 +33,15 @@ object AssetIssuingDirective {
   val TypeId: Byte = 2.toByte
 
   implicit val jsonEncoder: Encoder[AssetIssuingDirective] = (d: AssetIssuingDirective) => Map(
-    "typeId" -> d.typeId.asJson,
+    "typeId"       -> d.typeId.asJson,
     "contractHash" -> Algos.encode(d.contractHash).asJson,
-    "amount" -> d.amount.asJson
+    "amount"       -> d.amount.asJson
   ).asJson
 
   implicit val jsonDecoder: Decoder[AssetIssuingDirective] = (c: HCursor) => {
     for {
       contractHash <- c.downField("contractHash").as[ContractHash](Decoder.decodeString.emapTry(Algos.decode))
-      amount <- c.downField("amount").as[Long]
+      amount       <- c.downField("amount").as[Long]
     } yield AssetIssuingDirective(contractHash, amount)
   }
 }
@@ -56,7 +56,7 @@ object AssetIssuingDirectiveSerializer extends Serializer[AssetIssuingDirective]
 
   override def parseBytes(bytes: Array[Byte]): Try[AssetIssuingDirective] = Try {
     val contractHash: ContractHash = bytes.take(Constants.DigestLength)
-    val amount: Long = Longs.fromByteArray(bytes.slice(Constants.DigestLength, Constants.DigestLength + 8))
+    val amount: Long               = Longs.fromByteArray(bytes.slice(Constants.DigestLength, Constants.DigestLength + 8))
     AssetIssuingDirective(contractHash, amount)
   }
 }

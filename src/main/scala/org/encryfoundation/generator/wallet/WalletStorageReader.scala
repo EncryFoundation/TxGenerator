@@ -10,35 +10,29 @@ import scala.util.Try
 
 case class WalletStorageReader(settings: Settings) extends StrictLogging {
 
-  val AccountPrefix: Byte = 0x05
+  val AccountPrefix: Byte                = 0x05
 
-  def walletDir: File = new File(s"${settings.directory}/wallet")
+  def walletDir: File                    = new File(s"${settings.directory}/wallet")
+  def keysDir: File                      = new File(s"${settings.directory}/keys")
+  def walletStore: LSMStore              = new LSMStore(walletDir, keepVersions = 0)
+  def accountManagerStore: LSMStore      = new LSMStore(keysDir, keepVersions = 0, keySize = 33)
+  def createWalletStorage: WalletStorage = WalletStorage(walletStore, publicKeys)
 
-  def keysDir: File = new File(s"${settings.directory}/keys")
-
-  def walletStore: LSMStore = new LSMStore(walletDir, keepVersions = 0)
-
-  def accountManagerStore: LSMStore = new LSMStore(keysDir, keepVersions = 0, keySize = 33)
-
-  val publicKeys: Set[PublicKey25519] =
-    accountManagerStore.getAll().foldLeft(Seq.empty[PublicKey25519]) { case (acc, (k, _)) =>
+  val publicKeys: Set[PublicKey25519]    = accountManagerStore.getAll().foldLeft(Seq.empty[PublicKey25519]) {
+    case (acc, (k, _)) =>
       if (k.data.head == AccountPrefix) acc :+ PublicKey25519(PublicKey @@ k.data.tail)
       else acc
     }.toSet
 
-  def createWalletStorage: WalletStorage = WalletStorage(walletStore, publicKeys)
-
-  def accounts: List[PrivateKey25519] =
-    accountManagerStore.getAll().foldLeft(List[PrivateKey25519]()) { case (acc, (k, v)) =>
-      if (k.data.head == AccountPrefix)
-        acc :+ PrivateKey25519(PrivateKey @@ decrypt(v.data), PublicKey @@ k.data.tail)
+  def accounts: List[PrivateKey25519]    = accountManagerStore.getAll().foldLeft(List[PrivateKey25519]()) {
+    case (acc, (k, v)) =>
+      if (k.data.head == AccountPrefix) acc :+ PrivateKey25519(PrivateKey @@ decrypt(v.data), PublicKey @@ k.data.tail)
       else acc
     }
 
   private def decrypt(data: Array[Byte]): Array[Byte] = Try(AES.decrypt(data, settings.walletSettings.password))
-    .fold(e => {
-      logger.info(s"AccountManager: decryption failed cause ${e.getCause}")
+    .fold(exception => {
+      logger.info(s"AccountManager: decryption failed cause ${exception.getCause}")
       sys.exit(999)
-    }, r => r)
-
+    }, result => result)
 }

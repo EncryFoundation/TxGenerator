@@ -1,43 +1,68 @@
 package org.encryfoundation.generator.actors
 
-import akka.actor.SupervisorStrategy.Restart
-import akka.actor.{Actor, ActorRef, OneForOneStrategy, Props, SupervisorStrategy}
+import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.StrictLogging
+import org.encryfoundation.common.Algos
 import org.encryfoundation.common.crypto.PrivateKey25519
-import org.encryfoundation.common.transaction.Pay2PubKeyAddress
-import org.encryfoundation.generator.actors.BoxesHolder.{AskBoxesFromGenerator, BoxesAnswerToGenerator}
+import org.encryfoundation.common.transaction.PubKeyLockedContract
+import org.encryfoundation.generator.actors.BoxesHolder._
+import org.encryfoundation.generator.transaction.{EncryTransaction, Transaction}
+import org.encryfoundation.generator.transaction.box.AssetBox
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.encryfoundation.generator.utils.Settings
+import org.encryfoundation.generator.utils.{NetworkService, Settings}
 import org.encryfoundation.generator.wallet.WalletStorageReader
+import scorex.utils
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class Generator(settings: Settings,
                 privKey: PrivateKey25519,
                 walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
 
-  val broadcaster: ActorRef =
-    context.actorOf(Broadcaster.props(settings), s"broadcaster-${privKey.publicImage.address.address}")
+  val influx: Option[ActorRef] =
+    settings.influxDB.map(_ => context.actorOf(InfluxActor.props(settings), "influxDB"))
   val boxesHolder: ActorRef =
-    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader), "boxesHolder")
-  context.system.scheduler.schedule(5.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
+    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader, influx), "boxesHolder")
+  context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
     boxesHolder ! AskBoxesFromGenerator
     logger.info(s"Generator asked boxesHolder for new boxes.")
   }
 
   override def receive: Receive = {
-    case BoxesAnswerToGenerator(boxes) if boxes.nonEmpty =>
-      val partitionSize: Int =
-        if (boxes.size > settings.generator.partitionsQty * 2) boxes.size / settings.generator.partitionsQty
-        else boxes.size
-      boxes.sliding(partitionSize, partitionSize).foreach { partition =>
-        context.actorOf(Worker.props(privKey, partition, broadcaster, settings))
-      }
+    case BoxesForGenerator(boxes, txType) if boxes.nonEmpty =>
+      generateAndSendTransaction(boxes, txType)
+    case _ => logger.info(s"No boxes in IoDB.")
   }
 
-  override def supervisorStrategy: SupervisorStrategy =
-    OneForOneStrategy(maxNrOfRetries = 4, withinTimeRange = 30.seconds) {
-      case _ => Restart
+  def generateAndSendTransaction(boxes: List[AssetBox], txsType: Int): Future[Unit] = Future {
+    val transaction: EncryTransaction = txsType match {
+      case 1 => Transaction.dataTransactionScratch(
+        privKey,
+        settings.transactions.feeAmount,
+        System.currentTimeMillis(),
+        boxes.map(_ -> None),
+        PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract,
+        settings.transactions.requiredAmount - settings.transactions.feeAmount,
+        utils.Random.randomBytes(settings.transactions.dataTxSize),
+        settings.transactions.numberOfCreatedDirectives
+      )
+      case 2 => Transaction.defaultPaymentTransaction(
+        privKey,
+        settings.transactions.feeAmount,
+        System.currentTimeMillis(),
+        boxes.map(_ -> None),
+        privKey.publicImage.address.address,
+        settings.transactions.requiredAmount - settings.transactions.feeAmount,
+        settings.transactions.numberOfCreatedDirectives
+      )
     }
+    settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
+    logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}." +
+      s" Tx type is: ${txsType match {
+        case 1 => "DataTx"
+        case 2 => "MonetaryTx"
+      }}")
+  }
 }
 
 object Generator {

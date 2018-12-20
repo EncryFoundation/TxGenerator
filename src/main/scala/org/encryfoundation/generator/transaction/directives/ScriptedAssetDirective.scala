@@ -16,18 +16,19 @@ case class ScriptedAssetDirective(contractHash: ContractHash,
                                   amount: Long,
                                   tokenIdOpt: Option[ADKey] = None) extends Directive {
 
-  override type M = ScriptedAssetDirective
+  override type M                        = ScriptedAssetDirective
 
-  override val typeId: Byte = ScriptedAssetDirective.TypeId
+  override val typeId: Byte              = ScriptedAssetDirective.TypeId
 
   override def boxes(digest: Digest32, idx: Int): Seq[Box] =
-    Seq(AssetBox(EncryProposition(contractHash), Utils.nonceFromDigest(digest ++ Ints.toByteArray(idx)), amount))
+    Seq(AssetBox(EncryProposition(contractHash),
+      Utils.nonceFromDigest(digest ++ Ints.toByteArray(idx)), amount))
 
-  override lazy val isValid: Boolean = amount > 0
+  override lazy val isValid: Boolean     = amount > 0
 
   override def serializer: Serializer[M] = ScriptedAssetDirectiveSerializer
 
-  lazy val isIntrinsic: Boolean = tokenIdOpt.isEmpty
+  lazy val isIntrinsic: Boolean          = tokenIdOpt.isEmpty
 }
 
 object ScriptedAssetDirective {

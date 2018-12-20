@@ -14,7 +14,5 @@ object AES {
     encipher
   }
 
-  def encrypt(data: Array[Byte], secret: String): Array[Byte] = cipher(Cipher.ENCRYPT_MODE, secret).doFinal(data)
-
   def decrypt(data: Array[Byte], secret: String): Array[Byte] = cipher(Cipher.DECRYPT_MODE, secret).doFinal(data)
 }

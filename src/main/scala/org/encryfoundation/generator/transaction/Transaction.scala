@@ -1,6 +1,7 @@
 package org.encryfoundation.generator.transaction
 
 import com.google.common.primitives.{Bytes, Longs}
+import com.typesafe.scalalogging.StrictLogging
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.crypto.{PrivateKey25519, PublicKey25519, Signature25519}
@@ -11,9 +12,8 @@ import org.encryfoundation.common.Algos
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import org.encryfoundation.generator.transaction.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
-import org.encryfoundation.generator.transaction.box.MonetaryBox
+import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
 
-/** Completely assembled atomic state modifier. */
 case class EncryTransaction(fee: Long,
                             timestamp: Long,
                             inputs: IndexedSeq[Input],
@@ -21,27 +21,28 @@ case class EncryTransaction(fee: Long,
                             defaultProofOpt: Option[Proof]) {
 
   val messageToSign: Array[Byte] = UnsignedEncryTransaction.bytesToSign(fee, timestamp, inputs, directives)
-
-  lazy val id: Array[Byte] = Blake2b256.hash(messageToSign)
+  lazy val id: Array[Byte]       = Blake2b256.hash(messageToSign)
+  lazy val newBoxes: IndexedSeq[Box] =
+    directives.zipWithIndex.flatMap { case (d, idx) => d.boxes(Digest32 !@@ id, idx) }
 }
 
 object EncryTransaction {
 
   implicit val jsonEncoder: Encoder[EncryTransaction] = (tx: EncryTransaction) => Map(
-    "id" -> Algos.encode(tx.id).asJson,
-    "fee" -> tx.fee.asJson,
-    "timestamp" -> tx.timestamp.asJson,
-    "inputs" -> tx.inputs.map(_.asJson).asJson,
-    "directives" -> tx.directives.map(_.asJson).asJson,
+    "id"              -> Algos.encode(tx.id).asJson,
+    "fee"             -> tx.fee.asJson,
+    "timestamp"       -> tx.timestamp.asJson,
+    "inputs"          -> tx.inputs.map(_.asJson).asJson,
+    "directives"      -> tx.directives.map(_.asJson).asJson,
     "defaultProofOpt" -> tx.defaultProofOpt.map(_.asJson).asJson
   ).asJson
 
   implicit val jsonDecoder: Decoder[EncryTransaction] = (c: HCursor) => {
     for {
-      fee <- c.downField("fee").as[Long]
-      timestamp <- c.downField("timestamp").as[Long]
-      inputs <- c.downField("inputs").as[IndexedSeq[Input]]
-      directives <- c.downField("directives").as[IndexedSeq[Directive]]
+      fee             <- c.downField("fee").as[Long]
+      timestamp       <- c.downField("timestamp").as[Long]
+      inputs          <- c.downField("inputs").as[IndexedSeq[Input]]
+      directives      <- c.downField("directives").as[IndexedSeq[Directive]]
       defaultProofOpt <- c.downField("defaultProofOpt").as[Option[Proof]]
     } yield EncryTransaction(
       fee,
@@ -53,8 +54,6 @@ object EncryTransaction {
   }
 }
 
-/** Unsigned version of EncryTransaction (without any
-  * proofs for which interactive message is required) */
 case class UnsignedEncryTransaction(fee: Long,
                                     timestamp: Long,
                                     inputs: IndexedSeq[Input],
@@ -84,7 +83,7 @@ object UnsignedEncryTransaction {
     ))
 }
 
-object Transaction {
+object Transaction extends StrictLogging {
 
   def defaultPaymentTransaction(privKey: PrivateKey25519,
                                 fee: Long,
@@ -92,9 +91,14 @@ object Transaction {
                                 useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                 recipient: String,
                                 amount: Long,
+                                numberOfCreatedDirectives: Int = 1,
                                 tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val transferDirective: TransferDirective = TransferDirective(recipient, amount, tokenIdOpt)
-    prepareTransaction(privKey, fee, timestamp, useOutputs, transferDirective, amount, tokenIdOpt)
+    val directives: IndexedSeq[TransferDirective] = if (useOutputs.size < 10)
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[TransferDirective]) { case (directivesAll, _) =>
+        directivesAll :+ TransferDirective(recipient, amount / numberOfCreatedDirectives, tokenIdOpt)
+      }
+    else IndexedSeq(TransferDirective(recipient, amount - fee, tokenIdOpt))
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
   def scriptedAssetTransactionScratch(privKey: PrivateKey25519,
@@ -103,9 +107,13 @@ object Transaction {
                                       useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                       contract: CompiledContract,
                                       amount: Long,
+                                      numberOfCreatedDirectives: Int = 1,
                                       tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val scriptedAssetDirective: ScriptedAssetDirective = ScriptedAssetDirective(contract.hash, amount, tokenIdOpt)
-    prepareTransaction(privKey, fee, timestamp, useOutputs, scriptedAssetDirective, amount, tokenIdOpt)
+    val directives: IndexedSeq[ScriptedAssetDirective] =
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[ScriptedAssetDirective]) { case (directivesAll, _) =>
+        directivesAll :+ ScriptedAssetDirective(contract.hash, amount, tokenIdOpt)
+      }
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
   def assetIssuingTransactionScratch(privKey: PrivateKey25519,
@@ -114,52 +122,66 @@ object Transaction {
                                      useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                      contract: CompiledContract,
                                      amount: Long,
+                                     numberOfCreatedDirectives: Int = 1,
                                      tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val assetIssuingDirective: AssetIssuingDirective = AssetIssuingDirective(contract.hash, amount)
-    prepareTransaction(privKey, fee, timestamp, useOutputs, assetIssuingDirective, amount, tokenIdOpt)
+    val directives: IndexedSeq[AssetIssuingDirective] =
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[AssetIssuingDirective]) { case (directivesAll, _) =>
+        directivesAll :+ AssetIssuingDirective(contract.hash, amount)
+      }
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
+  }
+
+  def dataTransactionScratch(privKey: PrivateKey25519,
+                             fee: Long,
+                             timestamp: Long,
+                             useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
+                             contract: CompiledContract,
+                             amount: Long,
+                             data: Array[Byte],
+                             numberOfCreatedDirectives: Int = 1,
+                             tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
+    val directives: IndexedSeq[DataDirective] =
+      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[DataDirective]) { case (directivesAll, _) =>
+        directivesAll :+ DataDirective(contract.hash, data)
+      }
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
   private def prepareTransaction(privKey: PrivateKey25519,
                                  fee: Long,
                                  timestamp: Long,
                                  useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
-                                 directive: Directive,
+                                 directivesSeq: IndexedSeq[Directive],
                                  amount: Long,
                                  tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
 
     val pubKey: PublicKey25519 = privKey.publicImage
 
-    val outputs: IndexedSeq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])] = useOutputs
-      .sortWith(_._1.amount > _._1.amount)
-      .foldLeft(IndexedSeq.empty[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])]) { case (acc, e) =>
-        if (acc.map(_._1.amount).sum < amount) acc :+ e else acc
-      }
+    val uInputs: IndexedSeq[Input] = useOutputs.toIndexedSeq.map { case (box, contractOpt) =>
+      Input.unsigned(
+        box.id,
+        contractOpt match {
+          case Some((ct, _)) => Left(ct)
+          case None => Right(PubKeyLockedContract(pubKey.pubKeyBytes))
+        }
+      )
+    }
 
-    val uInputs: IndexedSeq[Input] = outputs
-      .map { case (o, co) =>
-        Input.unsigned(
-          o.id,
-          co match {
-            case Some((ct, _)) => Left(ct)
-            case None => Right(PubKeyLockedContract(pubKey.pubKeyBytes))
-          }
-        )
-      }
+    val change: Long = useOutputs.map(_._1.amount).sum - (amount + fee)
 
-    val change: Long = outputs.map(_._1.amount).sum - (amount + fee)
-
-    if (change < 0) throw new RuntimeException("Transaction impossible: required amount is bigger than available")
+    if (change < 0) {
+      logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
+      throw new RuntimeException("Transaction impossible: required amount is bigger than available")
+    }
 
     val directives: IndexedSeq[Directive] =
-      if (change > 0) IndexedSeq(directive, TransferDirective(pubKey.address.address, change, tokenIdOpt))
-      else IndexedSeq(directive)
+      if (change > 0) directivesSeq :+ TransferDirective(pubKey.address.address, change, tokenIdOpt)
+      else directivesSeq
 
     val uTransaction: UnsignedEncryTransaction = UnsignedEncryTransaction(fee, timestamp, uInputs, directives)
-    val signature: Signature25519 = privKey.sign(uTransaction.messageToSign)
-
-    val proofs: IndexedSeq[Seq[Proof]] = useOutputs.flatMap(_._2.map(_._2)).toIndexedSeq
+    val signature: Signature25519              = privKey.sign(uTransaction.messageToSign)
+    val proofs: IndexedSeq[Seq[Proof]]         = useOutputs.flatMap(_._2.map(_._2)).toIndexedSeq
 
     uTransaction.toSigned(proofs, Some(Proof(BoxedValue.Signature25519Value(signature.bytes.toList))))
   }
-
 }

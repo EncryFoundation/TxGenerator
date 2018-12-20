@@ -24,10 +24,10 @@ object TokenIssuingBox {
   val TypeId: Byte = 3.toByte
 
   implicit val jsonEncoder: Encoder[TokenIssuingBox] = (bx: TokenIssuingBox) => Map(
-    "type" -> TypeId.asJson,
-    "id" -> Algos.encode(bx.id).asJson,
+    "type"        -> TypeId.asJson,
+    "id"          -> Algos.encode(bx.id).asJson,
     "proposition" -> bx.proposition.asJson,
-    "nonce" -> bx.nonce.asJson
+    "nonce"       -> bx.nonce.asJson
   ).asJson
 }
 
@@ -45,12 +45,12 @@ object AssetIssuingBoxSerializer extends Serializer[TokenIssuingBox] {
   }
 
   override def parseBytes(bytes: Array[Byte]): Try[TokenIssuingBox] = Try {
-    val propositionLen: Short = Shorts.fromByteArray(bytes.take(2))
-    val iBytes: Array[Byte] = bytes.drop(2)
+    val propositionLen: Short         = Shorts.fromByteArray(bytes.take(2))
+    val iBytes: Array[Byte]           = bytes.drop(2)
     val proposition: EncryProposition = EncryPropositionSerializer.parseBytes(iBytes.take(propositionLen)).get
-    val nonce: Long = Longs.fromByteArray(iBytes.slice(propositionLen, propositionLen + 8))
-    val amount: Long = Longs.fromByteArray(iBytes.slice(propositionLen + 8, propositionLen + 8 + 8))
-    val creationId: TokenId = bytes.takeRight(32)
+    val nonce: Long                   = Longs.fromByteArray(iBytes.slice(propositionLen, propositionLen + 8))
+    val amount: Long                  = Longs.fromByteArray(iBytes.slice(propositionLen + 8, propositionLen + 8 + 8))
+    val creationId: TokenId           = bytes.takeRight(32)
     TokenIssuingBox(proposition, nonce, amount, creationId)
   }
 }

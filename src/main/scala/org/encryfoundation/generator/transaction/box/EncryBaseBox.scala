@@ -13,11 +13,11 @@ trait EncryBaseBox extends Box with PConvertible {
 
   val nonce: Long
 
-  override lazy val id: ADKey = ADKey @@ Algos.hash(Longs.toByteArray(nonce)).updated(0, typeId)
+  override lazy val id: ADKey     = ADKey @@ Algos.hash(Longs.toByteArray(nonce)).updated(0, typeId)
 
   override val tpe: Types.Product = Types.EncryBox
 
-  override def asVal: PValue = PValue(asPrism, tpe)
+  override def asVal: PValue      = PValue(asPrism, tpe)
 
   lazy val baseFields: Map[String, PValue] = Map(
     "contractHash" -> PValue(proposition.contractHash, Types.PCollection.ofByte),
@@ -25,14 +25,14 @@ trait EncryBaseBox extends Box with PConvertible {
     "id"           -> PValue(id, Types.PCollection.ofByte)
   )
 
-  def asPrism: PObject = PObject(baseFields, tpe)
+  def asPrism: PObject            = PObject(baseFields, tpe)
 }
 
 object EncryBaseBox {
 
   implicit val jsonEncoder: Encoder[EncryBaseBox] = {
-    case ab: AssetBox => AssetBox.jsonEncoder(ab)
-    case db: DataBox => DataBox.jsonEncoder(db)
+    case ab: AssetBox         => AssetBox.jsonEncoder(ab)
+    case db: DataBox          => DataBox.jsonEncoder(db)
     case aib: TokenIssuingBox => TokenIssuingBox.jsonEncoder(aib)
   }
 }
