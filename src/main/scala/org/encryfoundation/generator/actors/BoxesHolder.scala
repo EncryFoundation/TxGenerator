@@ -19,18 +19,18 @@ class BoxesHolder(settings: Settings,
 
   val cleanPeriod: FiniteDuration = settings.boxesHolderSettings.periodOfCleaningPool.seconds
   context.system.scheduler
-    .schedule(5.seconds, settings.boxesHolderSettings.getBoxesFromIODbPeriod.seconds, self, RequestBoxesFromIODb)
+    .schedule(5.seconds, settings.boxesHolderSettings.getBoxesFromIODbPeriod.seconds, self, RequestBoxesFromLevelDB)
   context.system.scheduler.schedule(cleanPeriod, cleanPeriod, self, TimeToClean)
 
   override def receive: Receive = boxesHolderBehavior()
 
   def boxesHolderBehavior(pool: List[Batch] = List(), usedBoxes: TreeSet[String] = TreeSet()): Receive = {
-    case RequestBoxesFromIODb =>
+    case RequestBoxesFromLevelDB =>
       logger.info(s"BoxesHolder got message `RequestBoxesFromIODb`. Current pool is: ${pool.size}. " +
         s"Current usedBoxes is: ${usedBoxes.size}")
-      val castedToAssetBoxes: List[AssetBox] = walletStorageReader.createWalletStorage.allBoxes.collect {
+      val castedToAssetBoxes: List[AssetBox] = walletStorageReader.createWalletStorage.getAll.collect {
         case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb
-      }.toList
+      }
       logger.info(s"Number of collected transactions is: ${castedToAssetBoxes.size}.")
       val foundResult: (List[AssetBox], TreeSet[String]) =
         findDifferenceBetweenUsedAndNewBoxes(usedBoxes, castedToAssetBoxes)
@@ -92,7 +92,7 @@ object BoxesHolder {
   def props(settings: Settings, walletStorageReader: WalletStorageReader, influx: Option[ActorRef]): Props =
     Props(new BoxesHolder(settings, walletStorageReader, influx))
 
-  case object RequestBoxesFromIODb
+  case object RequestBoxesFromLevelDB
   case object AskBoxesFromGenerator
   case object TimeToClean
   case class  BoxesForGenerator(list: List[AssetBox], txType: Int)

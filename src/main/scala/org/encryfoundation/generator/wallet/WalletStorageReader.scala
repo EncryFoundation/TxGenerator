@@ -5,6 +5,7 @@ import com.typesafe.scalalogging.StrictLogging
 import io.iohk.iodb.LSMStore
 import org.encryfoundation.common.crypto.{PrivateKey25519, PublicKey25519}
 import org.encryfoundation.generator.utils.{AES, Settings}
+import org.iq80.leveldb.{DB, Options}
 import scorex.crypto.signatures.{PrivateKey, PublicKey}
 import scala.util.Try
 
@@ -14,9 +15,9 @@ case class WalletStorageReader(settings: Settings) extends StrictLogging {
 
   def walletDir: File                    = new File(s"${settings.directory}/wallet")
   def keysDir: File                      = new File(s"${settings.directory}/keys")
-  def walletStore: LSMStore              = new LSMStore(walletDir, keepVersions = 0)
+  val db: DB                             = LevelDbFactory.factory.open(walletDir, new Options)
   def accountManagerStore: LSMStore      = new LSMStore(keysDir, keepVersions = 0, keySize = 33)
-  def createWalletStorage: WalletStorage = WalletStorage(walletStore, publicKeys)
+  def createWalletStorage: LevelDB       = LevelDB(db)
 
   val publicKeys: Set[PublicKey25519]    = accountManagerStore.getAll().foldLeft(Seq.empty[PublicKey25519]) {
     case (acc, (k, _)) =>
