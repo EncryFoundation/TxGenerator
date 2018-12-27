@@ -7,9 +7,17 @@ import org.encryfoundation.common.crypto.{PrivateKey25519, PublicKey25519}
 import org.encryfoundation.generator.utils.{AES, Settings}
 import org.iq80.leveldb.{DB, Options}
 import scorex.crypto.signatures.{PrivateKey, PublicKey}
+import sys.process._
 import scala.util.Try
+import org.encryfoundation.generator.GeneratorApp.system
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
 case class WalletStorageReader(settings: Settings) extends StrictLogging {
+
+  takeNewWallet()
+
+  system.scheduler.schedule(600.millis, 100.seconds)(takeNewWallet())
 
   val AccountPrefix: Byte                = 0x05
 
@@ -17,7 +25,16 @@ case class WalletStorageReader(settings: Settings) extends StrictLogging {
   def keysDir: File                      = new File(s"${settings.directory}/keys")
   val db: DB                             = LevelDbFactory.factory.open(walletDir, new Options)
   def accountManagerStore: LSMStore      = new LSMStore(keysDir, keepVersions = 0, keySize = 33)
-  def createWalletStorage: LevelDB       = LevelDB(db)
+  var createWalletStorage: LevelDB       = LevelDB(db)
+
+  def takeNewWallet(): Unit = {
+    "rm -rf wallet" !
+    val generatorDir = new File(s"/wallet")
+    s"cp ${settings.directory}/wallet wallet" !
+
+    LevelDbFactory.factory.open(generatorDir, new Options)
+    createWalletStorage = LevelDB(db)
+  }
 
   val publicKeys: Set[PublicKey25519]    = accountManagerStore.getAll().foldLeft(Seq.empty[PublicKey25519]) {
     case (acc, (k, _)) =>
