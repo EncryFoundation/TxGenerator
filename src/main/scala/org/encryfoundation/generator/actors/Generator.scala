@@ -9,20 +9,20 @@ import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.transaction.{EncryTransaction, Transaction}
 import org.encryfoundation.generator.transaction.box.AssetBox
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.encryfoundation.generator.utils.{NetworkService, Settings}
-import org.encryfoundation.generator.wallet.WalletStorageReader
+import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
 import scorex.utils
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class Generator(settings: Settings,
                 privKey: PrivateKey25519,
-                walletStorageReader: WalletStorageReader) extends Actor with StrictLogging {
+                nodeForLocalPrivKey: Node) extends Actor with StrictLogging {
 
   val influx: Option[ActorRef] =
     settings.influxDB.map(_ => context.actorOf(InfluxActor.props(settings), "influxDB"))
   val boxesHolder: ActorRef =
-    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader, influx), "boxesHolder")
+    context.system.actorOf(
+      BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.host}")
   context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
     boxesHolder ! AskBoxesFromGenerator
     logger.info(s"Generator asked boxesHolder for new boxes.")
@@ -31,7 +31,7 @@ class Generator(settings: Settings,
   override def receive: Receive = {
     case BoxesForGenerator(boxes, txType) if boxes.nonEmpty =>
       generateAndSendTransaction(boxes, txType)
-    case _ => logger.info(s"No boxes in IoDB.")
+    case _ =>
   }
 
   def generateAndSendTransaction(boxes: List[AssetBox], txsType: Int): Future[Unit] = Future {
@@ -66,6 +66,6 @@ class Generator(settings: Settings,
 }
 
 object Generator {
-  def props(settings: Settings, privKey: PrivateKey25519, walletStorageReader: WalletStorageReader): Props =
-    Props(new Generator(settings, privKey, walletStorageReader))
+  def props(settings: Settings, privKey: PrivateKey25519, nodeForLocalPrivKey: Node): Props =
+    Props(new Generator(settings, privKey, nodeForLocalPrivKey))
 }

@@ -6,16 +6,17 @@ import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.GeneratorApp.system
 import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.InfluxActor.{FindBatchesTimeSeconds, NewAndUsedOutputsInGeneratorMempool, SentBatches}
-import org.encryfoundation.generator.transaction.box.AssetBox
-import org.encryfoundation.generator.utils.Settings
-import org.encryfoundation.generator.wallet.WalletStorageReader
+import org.encryfoundation.generator.transaction.box.{AssetBox, Box}
+import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
+
 import scala.collection.immutable.TreeSet
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class BoxesHolder(settings: Settings,
-                  walletStorageReader: WalletStorageReader,
-                  influx: Option[ActorRef]) extends Actor with StrictLogging {
+                  influx: Option[ActorRef],
+                  peer: Node) extends Actor with StrictLogging {
 
   val cleanPeriod: FiniteDuration = settings.boxesHolderSettings.periodOfCleaningPool.seconds
   context.system.scheduler
@@ -28,8 +29,11 @@ class BoxesHolder(settings: Settings,
     case RequestBoxesFromLevelDB =>
       logger.info(s"BoxesHolder got message `RequestBoxesFromIODb`. Current pool is: ${pool.size}. " +
         s"Current usedBoxes is: ${usedBoxes.size}")
-      val castedToAssetBoxes: List[AssetBox] = walletStorageReader.createWalletStorage.getAll.collect {
+      val assetBoxesFromApi: Future[List[AssetBox]] = NetworkService.requestUtxos(peer).map(_.collect {
         case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb
+      })
+      assetBoxesFromApi.map { boxes =>
+
       }
       logger.info(s"Number of collected transactions is: ${castedToAssetBoxes.size}.")
       val foundResult: (List[AssetBox], TreeSet[String]) =
@@ -89,8 +93,8 @@ class BoxesHolder(settings: Settings,
 
 object BoxesHolder {
 
-  def props(settings: Settings, walletStorageReader: WalletStorageReader, influx: Option[ActorRef]): Props =
-    Props(new BoxesHolder(settings, walletStorageReader, influx))
+  def props(settings: Settings, influx: Option[ActorRef], peer: Node): Props =
+    Props(new BoxesHolder(settings, influx, peer))
 
   case object RequestBoxesFromLevelDB
   case object AskBoxesFromGenerator

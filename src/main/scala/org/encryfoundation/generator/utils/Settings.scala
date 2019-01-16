@@ -6,9 +6,10 @@ case class Settings(peers: List[Node],
                     directory: String,
                     boxesHolderSettings: BoxesHolderSettings,
                     walletSettings: WalletSettings,
-                    transactions: TransactionsSettings)
+                    transactions: TransactionsSettings,
+                    privKey: PrivKey)
 
-case class Node(host: String, port: Int)
+case class Node(host: String, port: Int, mnemonicKey: String)
 
 case class InfluxDBSettings(url: String,
                             login: String,
@@ -27,3 +28,5 @@ case class TransactionsSettings(numberOfDataTxs: Int,
                                 feeAmount: Int,
                                 dataTxSize: Int,
                                 numberOfCreatedDirectives: Int)
+
+case class PrivKey(privKey: String)
