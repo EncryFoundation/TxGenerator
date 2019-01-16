@@ -5,10 +5,9 @@ import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.GeneratorApp.system
 import org.encryfoundation.generator.actors.BoxesHolder._
-import org.encryfoundation.generator.actors.InfluxActor.{FindBatchesTimeSeconds, NewAndUsedOutputsInGeneratorMempool, SentBatches}
-import org.encryfoundation.generator.transaction.box.{AssetBox, Box}
+import org.encryfoundation.generator.actors.InfluxActor._
+import org.encryfoundation.generator.transaction.box.AssetBox
 import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
-
 import scala.collection.immutable.TreeSet
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -19,25 +18,17 @@ class BoxesHolder(settings: Settings,
                   peer: Node) extends Actor with StrictLogging {
 
   val cleanPeriod: FiniteDuration = settings.boxesHolderSettings.periodOfCleaningPool.seconds
-  context.system.scheduler
-    .schedule(5.seconds, settings.boxesHolderSettings.getBoxesFromIODbPeriod.seconds, self, RequestBoxesFromLevelDB)
   context.system.scheduler.schedule(cleanPeriod, cleanPeriod, self, TimeToClean)
+  context.system.scheduler.schedule(5.seconds, settings.boxesHolderSettings.getBoxesFromApi.seconds)(getBoxes)
 
   override def receive: Receive = boxesHolderBehavior()
 
   def boxesHolderBehavior(pool: List[Batch] = List(), usedBoxes: TreeSet[String] = TreeSet()): Receive = {
-    case RequestBoxesFromLevelDB =>
-      logger.info(s"BoxesHolder got message `RequestBoxesFromIODb`. Current pool is: ${pool.size}. " +
+    case BoxesFromApi(boxes) =>
+      logger.info(s"BoxesHolder got message `BoxesFromApi`. Current pool is: ${pool.size}. " +
         s"Current usedBoxes is: ${usedBoxes.size}")
-      val assetBoxesFromApi: Future[List[AssetBox]] = NetworkService.requestUtxos(peer).map(_.collect {
-        case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb
-      })
-      assetBoxesFromApi.map { boxes =>
-
-      }
-      logger.info(s"Number of collected transactions is: ${castedToAssetBoxes.size}.")
       val foundResult: (List[AssetBox], TreeSet[String]) =
-        findDifferenceBetweenUsedAndNewBoxes(usedBoxes, castedToAssetBoxes)
+        findDifferenceBetweenUsedAndNewBoxes(usedBoxes, boxes)
       influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(foundResult._1.size, foundResult._2.size))
       logger.info(s"Number of foundResult is: ${foundResult._1.size},  ${foundResult._2.size}.")
       val batchesPool: List[Batch] = batchesForTransactions(foundResult._1)
@@ -89,16 +80,21 @@ class BoxesHolder(settings: Settings,
     logger.info(s"newBMap.keys.to[TreeSet].size ${newBMap.keys.to[TreeSet].size}")
     (filteredNewB.values.toList, newBMap.keys.to[TreeSet])
   }
+
+  def getBoxes: Future[Unit] = {
+    NetworkService.requestUtxos(peer)
+      .map(_.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb })
+      .map(boxes => self ! BoxesFromApi(boxes))
+  }
 }
 
 object BoxesHolder {
-
   def props(settings: Settings, influx: Option[ActorRef], peer: Node): Props =
     Props(new BoxesHolder(settings, influx, peer))
 
-  case object RequestBoxesFromLevelDB
   case object AskBoxesFromGenerator
   case object TimeToClean
+  case class  BoxesFromApi(list: List[AssetBox])
   case class  BoxesForGenerator(list: List[AssetBox], txType: Int)
   case class  Batch(boxes: List[AssetBox])
 }
