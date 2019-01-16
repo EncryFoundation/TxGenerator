@@ -66,8 +66,7 @@ class BoxesHolder(settings: Settings,
         (Batch(newBatch) :: listBatches, Batch(List()), 0)
       else (listBatches, Batch(newBatch), newAmount)
     }
-    system.actorSelection("/user/generator/influxDB") !
-      FindBatchesTimeSeconds((System.currentTimeMillis() - startTime) / 1000)
+    influx.foreach(infl => infl ! FindBatchesTimeSeconds((System.currentTimeMillis() - startTime) / 1000))
     batchesList._1
   }
 

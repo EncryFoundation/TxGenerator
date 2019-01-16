@@ -20,8 +20,7 @@ class Generator(settings: Settings,
 
   val influx: Option[ActorRef] =
     settings.influxDB.map(_ => context.actorOf(InfluxActor.props(settings), "influxDB"))
-  val boxesHolder: ActorRef =
-    context.system.actorOf(
+  val boxesHolder: ActorRef = context.system.actorOf(
       BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.host}")
   context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
     boxesHolder ! AskBoxesFromGenerator
