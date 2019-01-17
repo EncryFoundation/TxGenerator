@@ -42,7 +42,7 @@ class Generator(settings: Settings,
         System.currentTimeMillis(),
         boxes.map(_ -> None),
         PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract,
-        settings.transactions.requiredAmount - settings.transactions.feeAmount,
+        settings.transactions.requiredAmount,
         utils.Random.randomBytes(settings.transactions.dataTxSize),
         settings.transactions.numberOfCreatedDirectives
       )
@@ -52,7 +52,7 @@ class Generator(settings: Settings,
         System.currentTimeMillis(),
         boxes.map(_ -> None),
         privKey.publicImage.address.address,
-        settings.transactions.requiredAmount - settings.transactions.feeAmount,
+        settings.transactions.requiredAmount,
         settings.transactions.numberOfCreatedDirectives
       )
     }
