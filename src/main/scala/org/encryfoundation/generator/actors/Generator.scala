@@ -30,6 +30,7 @@ class Generator(settings: Settings,
   override def receive: Receive = {
     case BoxesForGenerator(boxes, txType) if boxes.nonEmpty =>
       generateAndSendTransaction(boxes, txType)
+      logger.info("send tx")
     case _ =>
   }
 
@@ -56,11 +57,6 @@ class Generator(settings: Settings,
       )
     }
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
-    logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}." +
-      s" Tx type is: ${txsType match {
-        case 1 => "DataTx"
-        case 2 => "MonetaryTx"
-      }}")
   }
 }
 

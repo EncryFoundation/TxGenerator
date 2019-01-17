@@ -165,6 +165,8 @@ object Transaction extends StrictLogging {
 
     val change: Long = useOutputs.map(_._1.amount).sum - (amount + fee)
 
+    logger.info(s"Current change is: $change. Outputs amount: ${ useOutputs.map(_._1.amount).sum}. Need minimum: ${amount + fee}")
+
     if (change < 0) {
       logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
       throw new RuntimeException("Transaction impossible: required amount is bigger than available")
