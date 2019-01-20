@@ -1,9 +1,9 @@
 package org.encryfoundation.generator
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorRef, ActorSystem}
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.generator.actors.Generator
+import org.encryfoundation.generator.actors.{Generator, InfluxActor}
 import org.encryfoundation.generator.utils.Settings
 import scala.concurrent.ExecutionContextExecutor
 import com.typesafe.config.ConfigFactory
@@ -18,9 +18,11 @@ object GeneratorApp extends App with StrictLogging {
   implicit lazy val ec: ExecutionContextExecutor    = system.dispatcher
   val settings: Settings                            = ConfigFactory.load("local.conf")
                                                       .withFallback(ConfigFactory.load()).as[Settings]
+  val influx: Option[ActorRef] =
+    settings.influxDB.map(_ => system.actorOf(InfluxActor.props(settings), "influxDB"))
 
   settings.peers.foreach { peer =>
-    logger.info(s"Created generator actor for ${peer.port}:${peer.port}.")
-    system.actorOf(Generator.props(settings, createPrivKey(Some(peer.mnemonicKey)), peer), peer.host)
+    logger.info(s"Created generator actor for ${peer.host}:${peer.port}.")
+    system.actorOf(Generator.props(settings, createPrivKey(Some(peer.mnemonicKey)), peer, influx), peer.host)
   }
 }

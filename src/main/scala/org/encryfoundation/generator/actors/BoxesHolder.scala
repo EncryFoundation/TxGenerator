@@ -25,66 +25,55 @@ class BoxesHolder(settings: Settings,
 
   def boxesHolderBehavior(pool: List[Batch] = List(), usedBoxes: TreeSet[String] = TreeSet()): Receive = {
     case BoxesFromApi(boxes) =>
-      logger.info(s"BoxesHolder got message `BoxesFromApi`. Current pool is: ${pool.size}. " +
+
+      logger.info(s"BoxesHolder got message `BoxesFromApi`. Size of boxes list is: ${boxes.size}. " +
         s"Current usedBoxes is: ${usedBoxes.size}")
-      val foundResult: (List[AssetBox], TreeSet[String]) =
-        findDifferenceBetweenUsedAndNewBoxes(usedBoxes, boxes)
-      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(foundResult._1.size, foundResult._2.size))
-      logger.info(s"Number of foundResult is: ${foundResult._1.size},  ${foundResult._2.size}.")
-      val batchesPool: List[Batch] = batchesForTransactions(foundResult._1)
+      val foundNewUnique: (List[AssetBox], TreeSet[String]) = findDifferenceBetweenUsedAndNewBoxes(usedBoxes, boxes)
+      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(foundNewUnique._1.size, foundNewUnique._2.size))
+      logger.info(s"Number of foundResult is: ${foundNewUnique._1.size},  ${foundNewUnique._2.size}.")
+      val batchesPool: List[Batch] = batchesForTransactions(foundNewUnique._1)
       logger.info(s"Number of batches is: ${batchesPool.size}")
-      context.become(boxesHolderBehavior(batchesPool ::: pool, foundResult._2))
+      context.become(boxesHolderBehavior(batchesPool ::: pool, foundNewUnique._2))
 
     case AskBoxesFromGenerator =>
       logger.info(s"BoxesHolder got message `AskBoxesFromGenerator`. Current pool is: ${pool.size}")
-      val batchesForDataTxs: List[Batch] = pool.takeRight(settings.transactions.numberOfDataTxs)
-      if (settings.transactions.numberOfDataTxs > 0)
-        batchesForDataTxs.foreach(txs => sender() ! BoxesForGenerator(txs.boxes, 1))
-      logger.info(s"Number of batches before diff: ${pool.size}.")
-      val lastBatches: List[Batch] = pool.diff(batchesForDataTxs)
-      logger.info(s"Number of batches after diff: ${lastBatches.size}.")
-      val batchesForMonetaryTxs: List[Batch] = lastBatches.takeRight(settings.transactions.numberOfMonetaryTxs)
+      val batchesForMonetaryTxs: List[Batch] = pool.takeRight(settings.transactions.numberOfMonetaryTxs)
       if (settings.transactions.numberOfMonetaryTxs > 0)
         batchesForMonetaryTxs.foreach(txs => sender() ! BoxesForGenerator(txs.boxes, 2))
-      logger.info(s"Number of batches before diff: ${lastBatches.size}.")
-      val resultedBatches: List[Batch] = lastBatches.diff(batchesForMonetaryTxs)
+      logger.info(s"Number of batches before diff: ${pool.size}.")
+      val resultedBatches: List[Batch] = pool.diff(batchesForMonetaryTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
       influx.foreach(_ ! SentBatches(pool.size - resultedBatches.size))
       context.become(boxesHolderBehavior(resultedBatches, usedBoxes))
 
     case TimeToClean =>
       logger.info(s"Mempool has been cleaned.")
-      context.become(boxesHolderBehavior(pool))
+      context.become(boxesHolderBehavior(pool, TreeSet()))
   }
 
   def batchesForTransactions(list: List[AssetBox]): List[Batch] = {
-    val startTime: Long = System.currentTimeMillis()
-    val batchesList = list.foldLeft(List[Batch](), Batch(List()), 0L) { case ((listBatches, batch, amount), box) =>
-      val newBatch: List[AssetBox] = box :: batch.boxes
-      val newAmount: Long = amount + box.amount
-      if (newAmount > settings.transactions.feeAmount + settings.transactions.requiredAmount)
-        (Batch(newBatch) :: listBatches, Batch(List()), 0)
-      else (listBatches, Batch(newBatch), newAmount)
+    val batchesList: (List[Batch], Batch, Long) = list.foldLeft(List[Batch](), Batch(List()), 0L) {
+      case ((listBatches, batch, amount), box) =>
+        val newBatch: List[AssetBox] = box :: batch.boxes
+        val newAmount: Long = amount + box.amount
+        if (newAmount > settings.transactions.feeAmount) (Batch(newBatch) :: listBatches, Batch(List()), 0)
+        else (listBatches, Batch(newBatch), newAmount)
     }
-    influx.foreach(infl => infl ! FindBatchesTimeSeconds((System.currentTimeMillis() - startTime) / 1000))
     batchesList._1
   }
 
   def findDifferenceBetweenUsedAndNewBoxes(usedB: TreeSet[String],
                                            newB: List[AssetBox]): (List[AssetBox], TreeSet[String]) = {
     val newBMap: Map[String, AssetBox] = Map(newB.map(k => Algos.encode(k.id) -> k): _*)
-    logger.info(s"newBMap: ${newBMap.size}")
+    logger.info(s"NewBMap: Map[String, AssetBox].size ${newBMap.size}")
     val filteredNewB: Map[String, AssetBox] = newBMap.filterKeys(key => !usedB.contains(key))
-    logger.info(s"filteredNewB: ${filteredNewB.size}")
-    logger.info(s"newBMap.keys.to[TreeSet].size ${newBMap.keys.to[TreeSet].size}")
+    logger.info(s"NewBMap.keys.to[TreeSet].size ${newBMap.keys.to[TreeSet].size}. FilteredNewB: ${filteredNewB.size}")
     (filteredNewB.values.toList, newBMap.keys.to[TreeSet])
   }
 
-  def getBoxes: Future[Unit] = {
-    NetworkService.requestUtxos(peer)
-      .map(_.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb })
-      .map(boxes => self ! BoxesFromApi(boxes))
-  }
+  def getBoxes: Future[Unit] = NetworkService.requestUtxos(peer)
+    .map(_.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb })
+    .map(boxes => self ! BoxesFromApi(boxes))
 }
 
 object BoxesHolder {
@@ -96,4 +85,5 @@ object BoxesHolder {
   case class  BoxesFromApi(list: List[AssetBox])
   case class  BoxesForGenerator(list: List[AssetBox], txType: Int)
   case class  Batch(boxes: List[AssetBox])
+
 }

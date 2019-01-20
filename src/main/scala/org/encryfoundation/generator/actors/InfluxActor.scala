@@ -32,9 +32,6 @@ class InfluxActor(settings: Settings) extends Actor with StrictLogging {
 
     case GetAllTimeSeconds(time) =>
       influxDB.write(udpPort, s"getAllTime,nodeName=$nodeName value=$time")
-
-    case FindBatchesTimeSeconds(time) =>
-      influxDB.write(udpPort, s"findBatchesTime,nodeName=$nodeName value=$time")
   }
 }
 
@@ -44,5 +41,4 @@ object InfluxActor {
   case class NewAndUsedOutputsInGeneratorMempool(newO: Int, usedO: Int)
   case class SentBatches(num: Int)
   case class GetAllTimeSeconds(time: Long)
-  case class FindBatchesTimeSeconds(time: Long)
 }

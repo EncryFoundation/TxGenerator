@@ -16,10 +16,9 @@ import scala.concurrent.duration._
 
 class Generator(settings: Settings,
                 privKey: PrivateKey25519,
-                nodeForLocalPrivKey: Node) extends Actor with StrictLogging {
+                nodeForLocalPrivKey: Node,
+                influx: Option[ActorRef]) extends Actor with StrictLogging {
 
-  val influx: Option[ActorRef] =
-    settings.influxDB.map(_ => context.actorOf(InfluxActor.props(settings), "influxDB"))
   val boxesHolder: ActorRef = context.system.actorOf(
       BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.host}")
   context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
@@ -61,6 +60,6 @@ class Generator(settings: Settings,
 }
 
 object Generator {
-  def props(settings: Settings, privKey: PrivateKey25519, nodeForLocalPrivKey: Node): Props =
-    Props(new Generator(settings, privKey, nodeForLocalPrivKey))
+  def props(settings: Settings, privKey: PrivateKey25519, nodeForLocalPrivKey: Node, influx: Option[ActorRef]): Props =
+    Props(new Generator(settings, privKey, nodeForLocalPrivKey, influx))
 }

@@ -93,7 +93,8 @@ object Transaction extends StrictLogging {
                                 amount: Long,
                                 numberOfCreatedDirectives: Int = 1,
                                 tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val directives: IndexedSeq[TransferDirective] = IndexedSeq(TransferDirective(recipient, amount, tokenIdOpt))
+    val directives: IndexedSeq[TransferDirective] =
+      IndexedSeq(TransferDirective(recipient, useOutputs.map(_._1.amount).sum - fee, tokenIdOpt))
     prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
   }
 
@@ -163,26 +164,26 @@ object Transaction extends StrictLogging {
       )
     }
 
-    val change: Long = useOutputs.map(_._1.amount).sum - (amount + fee)
+    //val change: Long = useOutputs.map(_._1.amount).sum - (amount + fee)
 
-    logger.info(s"Current change is: $change. Outputs amount: ${ useOutputs.map(_._1.amount).sum}. Need minimum: ${amount + fee}")
+    //logger.info(s"Current change is: $change. Outputs amount: ${ useOutputs.map(_._1.amount).sum}. Need minimum: ${amount + fee}")
 
-    if (change < 0) {
-      logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
-      throw new RuntimeException("Transaction impossible: required amount is bigger than available")
-    }
+//    if (change < 0) {
+//      logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
+//      throw new RuntimeException("Transaction impossible: required amount is bigger than available")
+//    }
 
-    val directives: IndexedSeq[Directive] =
-      if (change > 0)
-        directivesSeq ++: IndexedSeq(
-          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt),
-          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt),
-          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt),
-          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt)
-        )
-      else directivesSeq
+//    val directives: IndexedSeq[Directive] =
+//      if (change > 0)
+//        directivesSeq ++: IndexedSeq(
+//          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt),
+//          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt),
+//          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt),
+//          TransferDirective(pubKey.address.address, change / 4, tokenIdOpt)
+//        )
+//      else directivesSeq
 
-    val uTransaction: UnsignedEncryTransaction = UnsignedEncryTransaction(fee, timestamp, uInputs, directives)
+    val uTransaction: UnsignedEncryTransaction = UnsignedEncryTransaction(fee, timestamp, uInputs, directivesSeq)
     val signature: Signature25519              = privKey.sign(uTransaction.messageToSign)
     val proofs: IndexedSeq[Seq[Proof]]         = useOutputs.flatMap(_._2.map(_._2)).toIndexedSeq
 
