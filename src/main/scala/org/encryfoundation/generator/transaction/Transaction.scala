@@ -99,9 +99,12 @@ object Transaction extends StrictLogging {
                                 tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
     val howMuchCanTransfer: Long = useOutputs.map(_._1.amount).sum - fee
     val howMuchWillTransfer: Long = howMuchCanTransfer - Math.abs(Random.nextLong % howMuchCanTransfer)
+    val change: Long = howMuchCanTransfer - howMuchWillTransfer
+    logger.info(s"howMuchCanTransfer - $howMuchCanTransfer. howMuchWillTransfer - $howMuchWillTransfer. " +
+      s"Change - $change")
     val directives: IndexedSeq[TransferDirective] =
       IndexedSeq(TransferDirective(recipient, howMuchWillTransfer, tokenIdOpt))
-    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, howMuchCanTransfer - howMuchWillTransfer, tokenIdOpt)
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, change, tokenIdOpt)
   }
 
   def scriptedAssetTransactionScratch(privKey: PrivateKey25519,
@@ -171,8 +174,6 @@ object Transaction extends StrictLogging {
     }
 
     val change: Long = amount
-
-    logger.info(s"Current change is: $change. Outputs amount: ${ useOutputs.map(_._1.amount).sum}. Need minimum: ${amount + fee}")
 
     if (change < 0) {
       logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
