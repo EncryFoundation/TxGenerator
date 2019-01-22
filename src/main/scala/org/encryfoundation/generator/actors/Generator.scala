@@ -29,7 +29,6 @@ class Generator(settings: Settings,
   override def receive: Receive = {
     case BoxesForGenerator(boxes, txType) if boxes.nonEmpty =>
       generateAndSendTransaction(boxes, txType)
-      logger.info("send tx")
     case _ =>
   }
 
