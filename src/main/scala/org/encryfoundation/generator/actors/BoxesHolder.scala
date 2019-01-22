@@ -3,7 +3,6 @@ package org.encryfoundation.generator.actors
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.Algos
-import org.encryfoundation.generator.GeneratorApp.system
 import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.InfluxActor._
 import org.encryfoundation.generator.transaction.box.AssetBox
@@ -25,29 +24,28 @@ class BoxesHolder(settings: Settings,
 
   def boxesHolderBehavior(pool: List[Batch] = List(), usedBoxes: TreeSet[String] = TreeSet()): Receive = {
     case BoxesFromApi(boxes) =>
-
       logger.info(s"BoxesHolder got message `BoxesFromApi`. Size of boxes list is: ${boxes.size}. " +
         s"Current usedBoxes is: ${usedBoxes.size}")
-      val foundNewUnique: (List[AssetBox], TreeSet[String]) = findDifferenceBetweenUsedAndNewBoxes(usedBoxes, boxes)
-      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(foundNewUnique._1.size, foundNewUnique._2.size))
-      logger.info(s"Number of foundResult is: ${foundNewUnique._1.size},  ${foundNewUnique._2.size}.")
-      val batchesPool: List[Batch] = batchesForTransactions(foundNewUnique._1)
+      val cleanedBoxes: (List[AssetBox], TreeSet[String]) = cleanNewBoxesFromUsed(usedBoxes, boxes)
+      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(cleanedBoxes._1.size, cleanedBoxes._2.size))
+      val batchesPool: List[Batch] = batchesForTransactions(cleanedBoxes._1)
       logger.info(s"Number of batches is: ${batchesPool.size}")
-      context.become(boxesHolderBehavior(batchesPool ::: pool, foundNewUnique._2))
+      context.become(boxesHolderBehavior(batchesPool, cleanedBoxes._2))
 
     case AskBoxesFromGenerator =>
       logger.info(s"BoxesHolder got message `AskBoxesFromGenerator`. Current pool is: ${pool.size}")
-      val batchesForMonetaryTxs: List[Batch] = pool.takeRight(settings.transactions.numberOfMonetaryTxs)
+      val batchesForTxs: List[Batch] = pool.takeRight(settings.transactions.numberOfMonetaryTxs)
+      val newUsed: TreeSet[String] = batchesForTxs.flatMap(_.boxes.map(box => Algos.encode(box.id))).to[TreeSet]
       if (settings.transactions.numberOfMonetaryTxs > 0)
-        batchesForMonetaryTxs.foreach(txs => sender() ! BoxesForGenerator(txs.boxes, 2))
+        batchesForTxs.foreach(txs => sender() ! BoxesForGenerator(txs.boxes, 2))
       logger.info(s"Number of batches before diff: ${pool.size}.")
-      val resultedBatches: List[Batch] = pool.diff(batchesForMonetaryTxs)
+      val resultedBatches: List[Batch] = pool.diff(batchesForTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
       influx.foreach(_ ! SentBatches(pool.size - resultedBatches.size))
-      context.become(boxesHolderBehavior(resultedBatches, usedBoxes))
+      context.become(boxesHolderBehavior(resultedBatches, usedBoxes ++ newUsed))
 
     case TimeToClean =>
-      logger.info(s"Mempool has been cleaned.")
+      logger.info(s"Used boxes has been cleaned.")
       context.become(boxesHolderBehavior(pool, TreeSet()))
   }
 
@@ -62,13 +60,18 @@ class BoxesHolder(settings: Settings,
     batchesList._1
   }
 
-  def findDifferenceBetweenUsedAndNewBoxes(usedB: TreeSet[String],
-                                           newB: List[AssetBox]): (List[AssetBox], TreeSet[String]) = {
+  def cleanNewBoxesFromUsed(usedB: TreeSet[String], newB: List[AssetBox]): (List[AssetBox], TreeSet[String]) = {
     val newBMap: Map[String, AssetBox] = Map(newB.map(k => Algos.encode(k.id) -> k): _*)
-    logger.info(s"NewBMap: Map[String, AssetBox].size ${newBMap.size}")
-    val filteredNewB: Map[String, AssetBox] = newBMap.filterKeys(key => !usedB.contains(key))
-    logger.info(s"NewBMap.keys.to[TreeSet].size ${newBMap.keys.to[TreeSet].size}. FilteredNewB: ${filteredNewB.size}")
-    (filteredNewB.values.toList, newBMap.keys.to[TreeSet])
+    logger.info(s"CleanNewBoxesFromUsed: New boxes map size is: ${newBMap.size}")
+    val usedAndNewBoxes: (TreeSet[String], Map[String, AssetBox]) =
+      usedB.foldLeft(TreeSet[String](), newBMap) { case ((newUsed, newBoxes), used) =>
+        newBoxes.get(used) match {
+          case Some(_) => (newUsed + used, newBoxes - used)
+          case None => (newUsed, newBoxes)
+        }
+      }
+    logger.info(s"CleanNewBoxesFromUsed: Used - ${usedAndNewBoxes._1.size}. New - ${usedAndNewBoxes._2.size}")
+    (usedAndNewBoxes._2.values.toList, usedAndNewBoxes._1)
   }
 
   def getBoxes: Future[Unit] = NetworkService.requestUtxos(peer)
@@ -81,9 +84,13 @@ object BoxesHolder {
     Props(new BoxesHolder(settings, influx, peer))
 
   case object AskBoxesFromGenerator
+
   case object TimeToClean
-  case class  BoxesFromApi(list: List[AssetBox])
-  case class  BoxesForGenerator(list: List[AssetBox], txType: Int)
-  case class  Batch(boxes: List[AssetBox])
+
+  case class BoxesFromApi(list: List[AssetBox])
+
+  case class BoxesForGenerator(list: List[AssetBox], txType: Int)
+
+  case class Batch(boxes: List[AssetBox])
 
 }
