@@ -75,7 +75,10 @@ class BoxesHolder(settings: Settings,
   }
 
   def getBoxes: Future[Unit] = NetworkService.requestUtxos(peer)
-    .map(_.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb })
+    .map { request =>
+      logger.info(s"Boxes from API: ${request.size}")
+      request.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb }
+    }
     .map(boxes => self ! BoxesFromApi(boxes))
 }
 
