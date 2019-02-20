@@ -1,5 +1,6 @@
 package org.encryfoundation.generator.transaction
 
+
 import com.google.common.primitives.{Bytes, Longs}
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.syntax._
@@ -13,6 +14,9 @@ import scorex.crypto.hash.{Blake2b256, Digest32}
 import org.encryfoundation.generator.transaction.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
+
+import scala.util.Random
+
 
 case class EncryTransaction(fee: Long,
                             timestamp: Long,
@@ -93,12 +97,14 @@ object Transaction extends StrictLogging {
                                 amount: Long,
                                 numberOfCreatedDirectives: Int = 1,
                                 tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
-    val directives: IndexedSeq[TransferDirective] = if (useOutputs.size < 10)
-      (1 to numberOfCreatedDirectives).foldLeft(IndexedSeq.empty[TransferDirective]) { case (directivesAll, _) =>
-        directivesAll :+ TransferDirective(recipient, amount / numberOfCreatedDirectives, tokenIdOpt)
-      }
-    else IndexedSeq(TransferDirective(recipient, amount - fee, tokenIdOpt))
-    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, amount, tokenIdOpt)
+    val howMuchCanTransfer: Long = useOutputs.map(_._1.amount).sum - fee
+    val howMuchWillTransfer: Long = howMuchCanTransfer - Math.abs(Random.nextLong % howMuchCanTransfer)
+    val change: Long = howMuchCanTransfer - howMuchWillTransfer
+    logger.info(s"howMuchCanTransfer - $howMuchCanTransfer. howMuchWillTransfer - $howMuchWillTransfer. " +
+      s"Change - $change")
+    val directives: IndexedSeq[TransferDirective] =
+      IndexedSeq(TransferDirective(recipient, howMuchWillTransfer, tokenIdOpt))
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, change, tokenIdOpt)
   }
 
   def scriptedAssetTransactionScratch(privKey: PrivateKey25519,
@@ -167,7 +173,7 @@ object Transaction extends StrictLogging {
       )
     }
 
-    val change: Long = useOutputs.map(_._1.amount).sum - (amount + fee)
+    val change: Long = amount
 
     if (change < 0) {
       logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")
@@ -175,7 +181,7 @@ object Transaction extends StrictLogging {
     }
 
     val directives: IndexedSeq[Directive] =
-      if (change > 0) directivesSeq :+ TransferDirective(pubKey.address.address, change, tokenIdOpt)
+      if (change > 0) directivesSeq ++: IndexedSeq(TransferDirective(pubKey.address.address, change, tokenIdOpt))
       else directivesSeq
 
     val uTransaction: UnsignedEncryTransaction = UnsignedEncryTransaction(fee, timestamp, uInputs, directives)

@@ -3,12 +3,10 @@ package org.encryfoundation.generator.utils
 case class Settings(peers: List[Node],
                     influxDB: Option[InfluxDBSettings],
                     generator: GeneratorSettings,
-                    directory: String,
                     boxesHolderSettings: BoxesHolderSettings,
-                    walletSettings: WalletSettings,
                     transactions: TransactionsSettings)
 
-case class Node(host: String, port: Int)
+case class Node(host: String, port: Int, mnemonicKey: String)
 
 case class InfluxDBSettings(url: String,
                             login: String,
@@ -17,9 +15,7 @@ case class InfluxDBSettings(url: String,
 
 case class GeneratorSettings(askBoxesHolderForBoxesPeriod: Int)
 
-case class BoxesHolderSettings(getBoxesFromIODbPeriod: Int, periodOfCleaningPool: Int)
-
-case class WalletSettings(password: String)
+case class BoxesHolderSettings(getBoxesFromApi: Int, periodOfCleaningPool: Int)
 
 case class TransactionsSettings(numberOfDataTxs: Int,
                                 numberOfMonetaryTxs: Int,
