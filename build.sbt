@@ -28,7 +28,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"    %% "akka-stream"  % akkaVersion,
   "org.influxdb"         % "influxdb-java" % "2.10",
   "com.iheart"           %% "ficus"        % "1.4.3",
-  "org.encry"            %% "encry-common" % "0.8.3"
+  "org.encry"            %% "encry-common" % "0.8.5"
 ) ++ loggingDependencies ++ testingDependencies
 
 resolvers ++= Seq("Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/",

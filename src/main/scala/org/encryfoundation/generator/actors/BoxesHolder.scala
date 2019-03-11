@@ -41,8 +41,26 @@ class BoxesHolder(settings: Settings,
       logger.info(s"Number of batches before diff: ${pool.size}.")
       val resultedBatches: List[Batch] = pool.diff(batchesForTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
+      val batchesForMultisigTxs: List[Batch] = resultedBatches.takeRight(settings.transactions.numberOfMultisigTxs)
+      if (settings.transactions.numberOfMultisigTxs > 0)
+        batchesForMultisigTxs.foreach(txs => sender() ! BoxesForGenerator(txs.boxes, 3))
+      val restBatches: List[Batch] = resultedBatches.diff(batchesForMultisigTxs)
+      logger.info(s"Number of batches after diff: ${restBatches.size}.")
       influx.foreach(_ ! SentBatches(pool.size - resultedBatches.size))
       context.become(boxesHolderBehavior(resultedBatches, usedBoxes ++ newUsed))
+
+    //case AskBoxesForMultisigSigning(txs) =>
+    //  logger.info(s"BoxesHolder got message `AskBoxesForMultisigSigning`. Current pool is: ${pool.size}, and number of txs is ${txs.size}")
+    //  val batchesForMultisigTxs: List[Batch] = pool.takeRight(txs.size)
+    //  influx.foreach(_ ! SentBatches(pool.size - batchesForMultisigTxs.size))
+    //  batchesForMultisigTxs.foreach(txs => sender() ! BoxesForGenerator(txs.boxes, 4))
+    //  logger.info(s"Number of batches after diff: ${pool.size - txs.size}.")
+    //  context.become(boxesHolderBehavior(pool.diff(batchesForMultisigTxs), usedBoxes))
+
+    case AskBoxesForMultisigSigning(txs) =>
+      logger.info(s"BoxesHolder got message `AskBoxesForMultisigSigning`. Current pool is: ${pool.size}, and number of txs is ${txs.size}")
+      sender() ! BoxesForGenerator(List.empty, 4)
+      logger.info(s"Number of batches after diff: ${pool.size}.")
 
     case TimeToClean =>
       logger.info(s"Used boxes has been cleaned.")
@@ -96,4 +114,5 @@ object BoxesHolder {
 
   case class Batch(boxes: List[AssetBox])
 
+  case class  AskBoxesForMultisigSigning(txs: Set[String])
 }
