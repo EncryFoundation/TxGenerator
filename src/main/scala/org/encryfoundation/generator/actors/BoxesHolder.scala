@@ -57,6 +57,11 @@ class BoxesHolder(settings: Settings,
       val resultedBatches: List[Batch] = pool.diff(batchesForTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
       influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(resultedBatches.map(_.boxes.size).sum, totalNumberOfUsedBoxes.size))
+      val batchesForMultisigTxs: List[Batch] = resultedBatches.takeRight(settings.transactions.numberOfMultisigTxs)
+      if (settings.transactions.numberOfMultisigTxs > 0)
+        batchesForMultisigTxs.foreach(txs => sender() ! BoxesForGenerator(txs.boxes, 3))
+      val restBatches: List[Batch] = resultedBatches.diff(batchesForMultisigTxs)
+      logger.info(s"Number of batches after diff: ${restBatches.size}.")
       influx.foreach(_ ! SentBatches(pool.size - resultedBatches.size))
       context.become(boxesHolderBehavior(resultedBatches, totalNumberOfUsedBoxes))
 
@@ -67,6 +72,12 @@ class BoxesHolder(settings: Settings,
       logger.info(s"Number of boxes for remove after deleting element is: ${updatedUsedBoxesForRemove.size}.")
       influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(pool.map(_.boxes.size).sum, updatedUsedBoxesForRemove.size))
       context.become(boxesHolderBehavior(pool, updatedUsedBoxesForRemove))
+
+    case AskBoxesForMultisigSigning(txs) =>
+      logger.info(s"BoxesHolder got message `AskBoxesForMultisigSigning`. Current pool is: ${pool.size}, and number of txs is ${txs.size}")
+      sender() ! BoxesForGenerator(List.empty, 4)
+      logger.info(s"Number of batches after diff: ${pool.size}.")
+
   }
 
   def batchesForTransactions(list: List[AssetBox]): List[Batch] = {
@@ -116,6 +127,7 @@ object BoxesHolder {
 
   case class Batch(boxes: List[AssetBox])
 
-  case class BoxForRemovingFromPool(boxId: String)
+  case class  AskBoxesForMultisigSigning(txs: Set[String])
 
+  case class BoxForRemovingFromPool(boxId: String)
 }

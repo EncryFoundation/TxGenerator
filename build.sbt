@@ -29,7 +29,7 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka"    %% "akka-stream"     % akkaVersion,
   "org.influxdb"         % "influxdb-java"    % "2.10",
   "com.iheart"           %% "ficus"           % "1.4.3",
-  "org.encry"            %% "encry-common"    % "0.8.3",
+  "org.encry"            %% "encry-common"    % "0.8.5",
   "org.typelevel" % "cats-core_2.12" % "1.0.1",
   "org.typelevel" % "cats-kernel_2.12" % "1.0.1",
   "org.typelevel" % "cats-macros_2.12" % "1.0.1"
