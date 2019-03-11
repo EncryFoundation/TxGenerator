@@ -24,6 +24,11 @@ object NetworkService {
       uri = "/transactions/send",
       entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
     ).withEffectiveUri(securedConnection = false, Host(node.host, node.port)))
+    .recoverWith {
+      case NonFatal(th) =>
+        th.printStackTrace()
+        Future.failed(th)
+    }
 
   def requestUtxos(node: Node): Future[List[Box]] =
     Http().singleRequest(HttpRequest(
@@ -47,8 +52,11 @@ object NetworkService {
       .flatMap { headers =>
         Future.sequence(headers.map(checkTxsInBlock(node, txsToCheck, _))).map(_.flatten)
       }
+      .flatMap { txs =>
+        if (txs.isEmpty) Future.failed(new RuntimeException) else Future.successful(txs)
+      }
       .recover {
-        case NonFatal(_) => List.empty
+        case NonFatal(th) => List.empty
       }
 
   private def checkTxsInBlock(node: Node, txsToCheck: Vector[String], headerId: HeaderId): Future[List[String]] =
@@ -61,8 +69,10 @@ object NetworkService {
       .map(decode[List[TransactionId]])
       .flatMap(_.fold(Future.failed, Future.successful))
       .map(_.map(_.id).intersect(txsToCheck))
-      .recover {
-        case NonFatal(_) => List.empty
+      .recoverWith {
+        case NonFatal(th) =>
+          th.printStackTrace()
+          Future.failed(th)
       }
 
   case class HeaderId(id: String)

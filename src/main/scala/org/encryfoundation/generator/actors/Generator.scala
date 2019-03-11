@@ -11,10 +11,7 @@ import org.encryfoundation.generator.transaction.{Contracts, EncryTransaction, T
 import org.encryfoundation.generator.transaction.box.{AssetBox, Box, MonetaryBox}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.encryfoundation.generator.utils.{NetworkService, Settings}
-import org.encryfoundation.generator.wallet.WalletStorageReader
 import org.encryfoundation.prismlang.compiler.CompiledContract
-import org.encryfoundation.prismlang.core.wrapped.BoxedValue
 import org.encryfoundation.prismlang.core.wrapped.BoxedValue.MultiSignatureValue
 import scorex.crypto.hash.Blake2b256
 import scorex.crypto.signatures.{Curve25519, PrivateKey, PublicKey}
@@ -24,6 +21,7 @@ import scorex.utils
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Random
+import scala.util.control.NonFatal
 
 class Generator(settings: Settings,
                 privKey: PrivateKey25519,
@@ -39,15 +37,11 @@ class Generator(settings: Settings,
         .map(pair => PrivateKey25519(pair._1, pair._2))
     else List.empty
   var multisigBoxes: Seq[Box] = Seq.empty
-  val influx: Option[ActorRef] =
-    settings.influxDB.map(_ => context.actorOf(InfluxActor.props(settings), "influxDB"))
-  val boxesHolder: ActorRef =
-    context.system.actorOf(BoxesHolder.props(settings, walletStorageReader, influx), "boxesHolder")
   val blockchainListener: ActorRef =
     context.actorOf(Props(classOf[BlockchainListener], settings), "blockchainListener")
   val boxesHolder: ActorRef = context.system.actorOf(
       BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.host}")
-  context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
+  context.system.scheduler.schedule(40.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
     boxesHolder ! AskBoxesFromGenerator
     logger.info(s"Generator asked boxesHolder for new boxes.")
   }
@@ -87,7 +81,7 @@ class Generator(settings: Settings,
           System.currentTimeMillis(),
           boxes.map(_ -> None),
           Contracts.multiSigContractScratch(multisigKeys.map(_.publicKeyBytes), settings.multisig.multisigThreshold).get,
-          settings.transactions.requiredAmount - settings.transactions.feeAmount,
+          settings.transactions.requiredAmount,
           settings.transactions.numberOfCreatedDirectives,
           None
         )
@@ -138,6 +132,10 @@ class Generator(settings: Settings,
         case 3 => "Multisig deploy"
         case 4 => "Multisig signing"
       }}")
+  }.recoverWith {
+    case NonFatal(th) =>
+      th.printStackTrace()
+      Future.failed(th)
   }
 
   def createKeyPair: PrivateKey25519 = {
