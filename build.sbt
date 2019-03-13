@@ -7,6 +7,7 @@ scalaVersion := "2.12.6"
 val akkaVersion     = "2.5.13"
 val akkaHttpVersion = "10.0.9"
 val logbackVersion  = "1.2.3"
+val catsVersion     = "1.0.1"
 
 val loggingDependencies = Seq(
   "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.0",
@@ -23,15 +24,24 @@ val testingDependencies = Seq(
 )
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka"    %% "akka-http"    % akkaHttpVersion,
-  "com.typesafe.akka"    %% "akka-actor"   % akkaVersion,
-  "com.typesafe.akka"    %% "akka-stream"  % akkaVersion,
-  "org.influxdb"         % "influxdb-java" % "2.10",
-  "com.iheart"           %% "ficus"        % "1.4.3",
-  "org.encry"            %% "encry-common" % "0.8.3"
+  "com.typesafe.akka"    %% "akka-http"       % akkaHttpVersion,
+  "com.typesafe.akka"    %% "akka-actor"      % akkaVersion,
+  "com.typesafe.akka"    %% "akka-stream"     % akkaVersion,
+  "org.influxdb"         % "influxdb-java"    % "2.10",
+  "com.iheart"           %% "ficus"           % "1.4.3",
+  "org.encry"            %% "encry-common"    % "0.8.3",
+  "org.typelevel" % "cats-core_2.12" % "1.0.1",
+  "org.typelevel" % "cats-kernel_2.12" % "1.0.1",
+  "org.typelevel" % "cats-macros_2.12" % "1.0.1"
 ) ++ loggingDependencies ++ testingDependencies
 
-resolvers ++= Seq("Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/",
+scalacOptions += "-Ypartial-unification"
+
+scalacOptions += "-language:higherKinds"
+
+resolvers ++= Seq(
+  "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/",
   "SonaType" at "https://oss.sonatype.org/content/groups/public",
   "Typesafe maven releases" at "http://repo.typesafe.com/typesafe/maven-releases/",
-  "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/")
+  "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+)
