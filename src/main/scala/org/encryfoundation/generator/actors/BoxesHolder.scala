@@ -30,12 +30,12 @@ class BoxesHolder(settings: Settings,
 
   override def receive: Receive = boxesHolderBehavior()
 
-  def boxesHolderBehavior(pool: List[Batch] = List(),
-                          boxesForRemove: Map[String, Cancellable] = Map()): Receive = {
+  def boxesHolderBehavior(pool: List[Batch] = List(), boxesForRemove: Map[String, Cancellable] = Map()): Receive = {
     case BoxesFromApi(boxes) =>
-      logger.info(s"BoxesHolder got message `BoxesFromApi`. Size of boxes list is: ${boxes.size}. " +
-        s"Current usedBoxes is: ${boxesForRemove.size}")
+      logger.info(s"BoxesHolder got message `BoxesFromApi`. Number of received boxes is: ${boxes.size}. " +
+        s"Current used boxes number is: ${boxesForRemove.size}.")
       val (boxesForUse: List[AssetBox], usedBoxes: Map[String, Cancellable]) = cleanReceivedBoxesFromUsed(boxesForRemove, boxes)
+      logger.info(s"BoxesForUse number after comparison is: ${boxesForUse.size}. usedBoxes number is: ${usedBoxes.size}.")
       influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(boxesForUse.size, usedBoxes.size))
       val batchesPool: List[Batch] = batchesForTransactions(boxesForUse)
       logger.info(s"Number of batches is: ${batchesPool.size}")
@@ -48,15 +48,22 @@ class BoxesHolder(settings: Settings,
         val boxId: String = Algos.encode(box.id)
         (boxId, context.system.scheduler.scheduleOnce(cleanPeriod, self, BoxForRemovingFromPool(boxId)))
       }).toMap
+      logger.info(s"Updated number of used boxes: ${usedBoxed.size}")
+      val totalNumberOfUsedBoxes: Map[String, Cancellable] = usedBoxed |+| boxesForRemove
+      logger.info(s"Total number of used boxes: ${totalNumberOfUsedBoxes.size}")
       if (settings.transactions.numberOfMonetaryTxs > 0)
         batchesForTxs.foreach(batch => sender() ! BoxesForGenerator(batch.boxes, 2))
       logger.info(s"Number of batches before diff: ${pool.size}.")
       val resultedBatches: List[Batch] = pool.diff(batchesForTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
       influx.foreach(_ ! SentBatches(pool.size - resultedBatches.size))
-      context.become(boxesHolderBehavior(resultedBatches, usedBoxed |+| boxesForRemove))
+      context.become(boxesHolderBehavior(resultedBatches, totalNumberOfUsedBoxes))
 
-    case BoxForRemovingFromPool(id) => context.become(boxesHolderBehavior(pool, boxesForRemove - id))
+    case BoxForRemovingFromPool(id) =>
+      logger.info(s"Received request for removing box with id: $id. Current number of boxes for remove is: ${boxesForRemove.size}.")
+      val updatedUsedBoxesForRemove: Map[String, Cancellable] = boxesForRemove - id
+      logger.info(s"Number of boxes for remove after deleting element is: ${updatedUsedBoxesForRemove.size}.")
+      context.become(boxesHolderBehavior(pool, updatedUsedBoxesForRemove))
   }
 
   def batchesForTransactions(list: List[AssetBox]): List[Batch] = {
