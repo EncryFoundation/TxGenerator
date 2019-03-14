@@ -56,13 +56,16 @@ class BoxesHolder(settings: Settings,
       logger.info(s"Number of batches before diff: ${pool.size}.")
       val resultedBatches: List[Batch] = pool.diff(batchesForTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
+      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(resultedBatches.map(_.boxes.size).sum, totalNumberOfUsedBoxes.size))
       influx.foreach(_ ! SentBatches(pool.size - resultedBatches.size))
       context.become(boxesHolderBehavior(resultedBatches, totalNumberOfUsedBoxes))
 
     case BoxForRemovingFromPool(id) =>
       logger.info(s"Received request for removing box with id: $id. Current number of boxes for remove is: ${boxesForRemove.size}.")
+      logger.info(s"${boxesForRemove.get(id).isDefined}")
       val updatedUsedBoxesForRemove: Map[String, Cancellable] = boxesForRemove - id
       logger.info(s"Number of boxes for remove after deleting element is: ${updatedUsedBoxesForRemove.size}.")
+      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(pool.map(_.boxes.size).sum, updatedUsedBoxesForRemove.size))
       context.become(boxesHolderBehavior(pool, updatedUsedBoxesForRemove))
   }
 
@@ -85,7 +88,9 @@ class BoxesHolder(settings: Settings,
       usedB.foldLeft(Map[String, Cancellable](), newBMap) {
         case ((newUsedCollection, newBoxesCollection), (id, timer)) => newBoxesCollection.get(id) match {
           case Some(_) => (newUsedCollection.updated(id, timer), newBoxesCollection - id)
-          case None => (newUsedCollection, newBoxesCollection)
+          case None =>
+            timer.cancel()
+            (newUsedCollection, newBoxesCollection)
         }
       }
     logger.info(s"CleanNewBoxesFromUsed: Used - ${usedBoxes.size}. New - ${newBoxes.size}")
@@ -96,8 +101,7 @@ class BoxesHolder(settings: Settings,
     .map { request =>
       logger.info(s"Boxes from API: ${request.size}")
       request.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb }
-    }
-    .map(boxes => self ! BoxesFromApi(boxes))
+    }.map(boxes => self ! BoxesFromApi(boxes))
 }
 
 object BoxesHolder {
