@@ -67,7 +67,7 @@ case class UnsignedEncryTransaction(fee: Long,
 
   def toSigned(proofs: IndexedSeq[Seq[Proof]], defaultProofOpt: Option[Proof]): EncryTransaction = {
     val signedInputs: IndexedSeq[Input] = inputs.zipWithIndex.map { case (input, idx) =>
-      if (proofs.nonEmpty && proofs.lengthCompare(idx + 1) <= 0) input.copy(proofs = proofs(idx).toList) else input
+      if (proofs.nonEmpty && proofs.isDefinedAt(idx)) input.copy(proofs = proofs(idx).toList) else input
     }
     EncryTransaction(fee, timestamp, signedInputs, directives, defaultProofOpt)
   }

@@ -5,10 +5,12 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
 import akka.util.ByteString
 import akka.util.ByteString
+import com.typesafe.scalalogging.StrictLogging
 import io.circe.{Decoder, HCursor, Json}
 import io.circe.syntax._
 import io.circe.parser.decode
 import io.circe.parser._
+import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.transaction.EncryTransaction
 import org.encryfoundation.generator.GeneratorApp._
 import org.encryfoundation.generator.transaction.box.Box
@@ -16,7 +18,7 @@ import org.encryfoundation.generator.transaction.box.Box
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
-object NetworkService {
+object NetworkService extends StrictLogging {
 
   def commitTransaction(node: Node, tx: EncryTransaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
@@ -56,7 +58,7 @@ object NetworkService {
         if (txs.isEmpty) Future.failed(new RuntimeException) else Future.successful(txs)
       }
       .recover {
-        case NonFatal(th) => List.empty
+        case NonFatal(_) => List.empty
       }
 
   private def checkTxsInBlock(node: Node, txsToCheck: Vector[String], headerId: HeaderId): Future[List[String]] =
@@ -69,7 +71,10 @@ object NetworkService {
       .map(decode[List[TransactionId]])
       .flatMap(_.fold(Future.failed, Future.successful))
       .map(_.map(_.id).intersect(txsToCheck))
-      .recoverWith {
+      .map { txs =>
+        if (txs.nonEmpty) logger.info(s"txs ${txs.mkString(",")} are in a block ${headerId.id}")
+        txs
+      }.recoverWith {
         case NonFatal(th) =>
           th.printStackTrace()
           Future.failed(th)

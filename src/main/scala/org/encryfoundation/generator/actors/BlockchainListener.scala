@@ -26,9 +26,11 @@ class BlockchainListener(settings: Settings) extends Actor with StrictLogging {
         .sequence(settings.peers.map(NetworkService.checkTxsInBlockchain(_, txsToCheck, settings.multisig.numberOfBlocksToCheck)))
         .map(_.flatten.toSet)
         .foreach { txs =>
-          logger.info(s"Multisig txs ${txs.mkString(", ")} are in blockchain now")
-          context.parent ! MultisigTxsInBlockchain(txs)
-          self ! MultisigTxsInBlockchain(txs)
+          if (txs.nonEmpty) {
+            logger.info(s"Multisig txs ${txs.mkString(", ")} are in blockchain now")
+            context.parent ! MultisigTxsInBlockchain(txs)
+            self ! MultisigTxsInBlockchain(txs)
+          }
         }
     case TimeToCheck =>
     case MultisigTxsInBlockchain(txs) => context.become(operating(txsToCheck.diff(txs.toSeq)))

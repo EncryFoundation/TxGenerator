@@ -47,7 +47,7 @@ class Generator(settings: Settings,
   }
 
   override def receive: Receive = {
-    case BoxesForGenerator(boxes, txType) if boxes.nonEmpty =>
+    case BoxesForGenerator(boxes, txType) if boxes.nonEmpty || txType == 4 =>
       generateAndSendTransaction(boxes, txType)
     case MultisigTxsInBlockchain(txs) => boxesHolder ! AskBoxesForMultisigSigning(txs)
     case _ => logger.info(s"No boxes in IoDB.")
@@ -106,7 +106,6 @@ class Generator(settings: Settings,
           .map(_.signature)
           .map(_.toList)
         val proofs: Seq[Proof] = Seq(Proof(MultiSignatureValue(signatures), Some("signature")))
-
         Transaction.defaultPaymentTransaction(
           privKey,
           settings.transactions.feeAmount,
@@ -123,7 +122,10 @@ class Generator(settings: Settings,
       blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
       multisigBoxes ++= transaction.newBoxes
     }
-    if (txsType == 4) multisigBoxes = Seq.empty
+    if (txsType == 4) {
+      blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
+      multisigBoxes = Seq.empty
+    }
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
     logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}." +
       s" Tx type is: ${txsType match {
