@@ -4,7 +4,6 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.Host
 import akka.util.ByteString
-import akka.util.ByteString
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.{Decoder, HCursor, Json}
 import io.circe.syntax._

@@ -126,6 +126,11 @@ class Generator(settings: Settings,
       blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
       multisigBoxes = Seq.empty
     }
+    if (txsType == 3) {
+      blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
+      multisigBoxes ++= transaction.newBoxes
+    }
+    if (txsType == 4) multisigBoxes = Seq.empty
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
     logger.info(s"Generated and sent new transaction with id: ${Algos.encode(transaction.id)}." +
       s" Tx type is: ${txsType match {
