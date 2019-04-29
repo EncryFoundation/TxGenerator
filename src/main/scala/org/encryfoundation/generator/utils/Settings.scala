@@ -26,7 +26,5 @@ case class TransactionsSettings(numberOfDataTxs: Int,
                                 dataTxSize: Int,
                                 numberOfCreatedDirectives: Int)
 
-case class MultisigSettings(multisigThreshold: Int,
-                            mnemonicKeys: List[String],
-                            checkTxMinedPeriod: Int,
+case class MultisigSettings(checkTxMinedPeriod: Int,
                             numberOfBlocksToCheck: Int)

@@ -8,12 +8,13 @@ import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.crypto.{PrivateKey25519, PublicKey25519, Signature25519}
 import org.encryfoundation.common.transaction.{Input, Proof, PubKeyLockedContract}
 import org.encryfoundation.prismlang.compiler.CompiledContract
-import org.encryfoundation.prismlang.core.wrapped.BoxedValue
+import org.encryfoundation.prismlang.core.wrapped.{BoxedValue, PObject, PValue}
 import org.encryfoundation.common.Algos
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import org.encryfoundation.generator.transaction.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.generator.transaction.box.{Box, MonetaryBox}
+import org.encryfoundation.prismlang.core.Types
 
 import scala.util.Random
 
@@ -28,6 +29,14 @@ case class EncryTransaction(fee: Long,
   lazy val id: Array[Byte]       = Blake2b256.hash(messageToSign)
   lazy val newBoxes: IndexedSeq[Box] =
     directives.zipWithIndex.flatMap { case (d, idx) => d.boxes(Digest32 !@@ id, idx) }
+
+  val tpe: Types.Product = Types.EncryTransaction
+
+  def asVal: PValue = PValue(PObject(Map(
+    "inputs"        -> PValue(inputs.map(_.boxId.toList), Types.PCollection(Types.PCollection.ofByte)),
+    "outputs"       -> PValue(newBoxes.map(_.asPrism), Types.PCollection(Types.EncryBox)),
+    "messageToSign" -> PValue(messageToSign, Types.PCollection.ofByte)
+  ), tpe), tpe)
 }
 
 object EncryTransaction {
@@ -107,6 +116,21 @@ object Transaction extends StrictLogging {
     prepareTransaction(privKey, fee, timestamp, useOutputs, directives, change, tokenIdOpt)
   }
 
+  def defaultPaymentTransactionWithoutRandom(privKey: PrivateKey25519,
+                                fee: Long,
+                                timestamp: Long,
+                                useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
+                                recipient: String,
+                                amount: Long,
+                                numberOfCreatedDirectives: Int = 1,
+                                tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
+    val howMuchCanTransfer: Long = useOutputs.map(_._1.amount).sum - fee
+    val change: Long = howMuchCanTransfer - amount
+    val directives: IndexedSeq[TransferDirective] =
+      IndexedSeq(TransferDirective(recipient, amount, tokenIdOpt))
+    prepareTransaction(privKey, fee, timestamp, useOutputs, directives, change, tokenIdOpt)
+  }
+
   def scriptedAssetTransactionScratch(privKey: PrivateKey25519,
                                       fee: Long,
                                       timestamp: Long,
@@ -158,7 +182,7 @@ object Transaction extends StrictLogging {
                                  timestamp: Long,
                                  useOutputs: Seq[(MonetaryBox, Option[(CompiledContract, Seq[Proof])])],
                                  directivesSeq: IndexedSeq[Directive],
-                                 amount: Long,
+                                 change: Long,
                                  tokenIdOpt: Option[ADKey] = None): EncryTransaction = {
 
     val pubKey: PublicKey25519 = privKey.publicImage
@@ -172,8 +196,6 @@ object Transaction extends StrictLogging {
         }
       )
     }
-
-    val change: Long = amount
 
     if (change < 0) {
       logger.warn(s"Transaction impossible: required amount is bigger than available. Change is: $change.")

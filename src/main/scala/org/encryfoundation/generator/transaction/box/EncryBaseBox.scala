@@ -19,13 +19,13 @@ trait EncryBaseBox extends Box with PConvertible {
 
   override def asVal: PValue      = PValue(asPrism, tpe)
 
-  lazy val baseFields: Map[String, PValue] = Map(
+  override lazy val baseFields: Map[String, PValue] = Map(
     "contractHash" -> PValue(proposition.contractHash, Types.PCollection.ofByte),
     "typeId"       -> PValue(typeId.toLong, Types.PInt),
     "id"           -> PValue(id, Types.PCollection.ofByte)
   )
 
-  def asPrism: PObject            = PObject(baseFields, tpe)
+  override def asPrism: PObject            = PObject(baseFields, tpe)
 }
 
 object EncryBaseBox {

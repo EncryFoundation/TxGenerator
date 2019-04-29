@@ -75,7 +75,7 @@ class BoxesHolder(settings: Settings,
 
     case AskBoxesForMultisigSigning(txs) =>
       logger.info(s"BoxesHolder got message `AskBoxesForMultisigSigning`. Current pool is: ${pool.size}, and number of txs is ${txs.size}")
-      sender() ! BoxesForGenerator(List.empty, 4)
+      txs.foreach(tx => sender() ! BoxesForGenerator(List.empty, 4, Some(tx)))
       logger.info(s"Number of batches after diff: ${pool.size}.")
 
   }
@@ -123,7 +123,7 @@ object BoxesHolder {
 
   case class BoxesFromApi(list: List[AssetBox])
 
-  case class BoxesForGenerator(list: List[AssetBox], txType: Int)
+  case class BoxesForGenerator(list: List[AssetBox], txType: Int, forTx: Option[String] = None)
 
   case class Batch(boxes: List[AssetBox])
 

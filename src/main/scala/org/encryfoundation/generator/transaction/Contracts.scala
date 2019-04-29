@@ -2,13 +2,13 @@ package org.encryfoundation.generator.transaction
 
 import org.encryfoundation.prismlang.compiler.{CompiledContract, PCompiler}
 import scorex.crypto.encode.Base58
-import scorex.crypto.signatures.{Curve25519, PublicKey}
+import scorex.crypto.signatures.PublicKey
 
 import scala.util.{Failure, Try}
 
 object Contracts {
 
-  def multiSigContractScratch(owners: Seq[PublicKey], threshold: Int): Try[CompiledContract] =
+  def multiSigContractScratch(owners: Seq[PublicKey]): Try[CompiledContract] =
   if (owners.nonEmpty) {
     val contractCode: String =
      s"""
@@ -17,11 +17,15 @@ object Contracts {
         |    anyOf(signature.map(lamb (x: Array[Byte]) = checkSig(x, message, key)))
         |  }
         |
-        |  let keys: Array[Array[Int]] = Array(${if (owners.size > 1) owners.map("base58'" + Base58.encode(_) + "'").mkString(", ") else s"base58'${Base58.encode(owners.head)}'"})
+        |  let ownerPubKey = base58'${Base58.encode(owners.head)}'
+        |  let garantPubKey = base58'${Base58.encode(owners(1))}'
+        |  let receiverPubKey = base58'${Base58.encode(owners(2))}'
+        |  let keys = Array(ownerPubKey, garantPubKey, receiverPubKey)
         |  let all: Array[Int] = keys.map(lamb(x: Array[Byte]) = if(isValidSig(signature, transaction.messageToSign, x)) 1 else 0)
-        |  all.sum >= $threshold
+        |  all.sum > 1
         |}
       """.stripMargin
     PCompiler.compile(contractCode)
   } else Failure(new IllegalArgumentException)
+
 }
