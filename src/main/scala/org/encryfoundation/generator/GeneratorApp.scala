@@ -22,7 +22,7 @@ object GeneratorApp extends App with StrictLogging {
     settings.influxDB.map(_ => system.actorOf(InfluxActor.props(settings), "influxDB"))
 
   settings.peers.foreach { peer =>
-    logger.info(s"Created generator actor for ${peer.host}:${peer.port}.")
-    system.actorOf(Generator.props(settings, createPrivKey(Some(peer.mnemonicKey)), peer, influx), peer.host)
+    logger.info(s"Created generator actor for ${peer.explorerHost}:${peer.explorerPort}.")
+    system.actorOf(Generator.props(settings, createPrivKey(Some(peer.mnemonicKey)), peer, influx), peer.explorerHost)
   }
 }

@@ -20,7 +20,7 @@ class Generator(settings: Settings,
                 influx: Option[ActorRef]) extends Actor with StrictLogging {
 
   val boxesHolder: ActorRef = context.system.actorOf(
-      BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.host}")
+      BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.explorerHost}")
   context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
     boxesHolder ! AskBoxesFromGenerator
     logger.info(s"Generator asked boxesHolder for new boxes.")

@@ -6,7 +6,7 @@ case class Settings(peers: List[Node],
                     boxesHolderSettings: BoxesHolderSettings,
                     transactions: TransactionsSettings)
 
-case class Node(host: String, port: Int, mnemonicKey: String)
+case class Node(explorerHost: String, explorerPort: Int, nodeHost: String, nodePort: Int, mnemonicKey: String)
 
 case class InfluxDBSettings(url: String,
                             login: String,

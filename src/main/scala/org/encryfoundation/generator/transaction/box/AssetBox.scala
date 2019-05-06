@@ -5,6 +5,7 @@ import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.serialization.Serializer
+import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.generator.transaction.box.TokenIssuingBox.TokenId
 
 import scala.util.Try
@@ -23,6 +24,21 @@ case class AssetBox(override val proposition: EncryProposition,
 
 object AssetBox {
 
+  val IntrinsicTokenId: String = Algos.encode(Algos.hash("intrinsic_token"))
+
+  def apply(proposition: EncryProposition,
+            nonce: Long,
+            amount: Long,
+            tokenIdOpt: Option[TokenId] = None): AssetBox = new AssetBox(
+    proposition,
+    nonce,
+    amount,
+    tokenIdOpt match {
+      case Some(id) if Algos.encode(id) == IntrinsicTokenId => Option.empty[TokenId]
+      case ex => ex
+    }
+  )
+
   val TypeId: Byte = 1.toByte
 
   implicit val jsonEncoder: Encoder[AssetBox] = (bx: AssetBox) => Map(
@@ -40,7 +56,7 @@ object AssetBox {
     value       <- c.downField("value").as[Long]
     tokenIdOpt  <- c.downField("tokenId")
       .as[Option[TokenId]](Decoder.decodeOption(Decoder.decodeString.emapTry(Algos.decode)))
-  } yield AssetBox(proposition, nonce, value, tokenIdOpt)
+  } yield AssetBox.apply(proposition, nonce, value, tokenIdOpt)
 }
 
 object AssetBoxSerializer extends Serializer[AssetBox] {
