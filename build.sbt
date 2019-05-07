@@ -1,5 +1,5 @@
 name         := "TransactionsGenerator"
-version      := "0.8.1"
+version      := "0.8.2"
 organization := "org.encry"
 
 scalaVersion := "2.12.6"
@@ -30,9 +30,10 @@ libraryDependencies ++= Seq(
   "org.influxdb"         % "influxdb-java"    % "2.10",
   "com.iheart"           %% "ficus"           % "1.4.3",
   "org.encry"            %% "encry-common"    % "0.8.3",
-  "org.typelevel" % "cats-core_2.12" % "1.0.1",
-  "org.typelevel" % "cats-kernel_2.12" % "1.0.1",
-  "org.typelevel" % "cats-macros_2.12" % "1.0.1"
+  "org.typelevel"        % "cats-core_2.12"   % "1.0.1",
+  "org.typelevel"        % "cats-kernel_2.12" % "1.0.1",
+  "org.typelevel"        % "cats-macros_2.12" % "1.0.1",
+  "com.google.guava"     % "guava"             % "27.1-jre"
 ) ++ loggingDependencies ++ testingDependencies
 
 scalacOptions += "-Ypartial-unification"
