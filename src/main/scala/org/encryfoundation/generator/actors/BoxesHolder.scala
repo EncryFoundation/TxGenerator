@@ -19,7 +19,9 @@ class BoxesHolder(settings: Settings,
                   peer: Node) extends Actor with StrictLogging {
 
   val cleanPeriod: FiniteDuration = settings.boxesHolderSettings.periodOfCleaningPool.seconds
-  context.system.scheduler.schedule(5.seconds, settings.boxesHolderSettings.getBoxesFromApi.seconds)(getBoxes)
+  context.system.scheduler.schedule(5.seconds, settings.boxesHolderSettings.getBoxesFromApi.seconds)(
+    getBoxes(0, settings.boxesHolderSettings.rangeForAskingBoxes)
+  )
 
   /**
     * Semigroup class for Cancellable. In this case while adding two instance we need to choose left one.
@@ -39,7 +41,7 @@ class BoxesHolder(settings: Settings,
       influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(boxesForUse.size, usedBoxes.size))
       val batchesPool: List[Batch] = batchesForTransactions(boxesForUse)
       logger.info(s"Number of batches is: ${batchesPool.size}")
-      context.become(boxesHolderBehavior(batchesPool, usedBoxes))
+      context.become(boxesHolderBehavior(pool ++: batchesPool, usedBoxes))
 
     case AskBoxesFromGenerator =>
       logger.info(s"BoxesHolder got message `AskBoxesFromGenerator`. Current pool is: ${pool.size}")
@@ -97,11 +99,18 @@ class BoxesHolder(settings: Settings,
     (newBoxes.values.toList, usedBoxes)
   }
 
-  def getBoxes: Future[Unit] = NetworkService.requestUtxos(peer)
-    .map { request =>
+  def getBoxes(from: Int, to: Int): Future[Unit] =
+    NetworkService.requestUtxos(peer, from, to).map { request =>
       logger.info(s"Boxes from API: ${request.size}")
+      if (request.nonEmpty) {
+        val newFrom: Int = from + settings.boxesHolderSettings.rangeForAskingBoxes
+        val newTo: Int   = to + settings.boxesHolderSettings.rangeForAskingBoxes
+        getBoxes(newFrom, newTo)
+        logger.info(s"Asking new boxes in range: $newFrom -> $newTo.")
+      }
       request.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty => mb }
     }.map(boxes => self ! BoxesFromApi(boxes))
+
 }
 
 object BoxesHolder {

@@ -15,7 +15,7 @@ case class InfluxDBSettings(url: String,
 
 case class GeneratorSettings(askBoxesHolderForBoxesPeriod: Int)
 
-case class BoxesHolderSettings(getBoxesFromApi: Int, periodOfCleaningPool: Int)
+case class BoxesHolderSettings(getBoxesFromApi: Int, periodOfCleaningPool: Int, rangeForAskingBoxes: Int)
 
 case class TransactionsSettings(numberOfDataTxs: Int,
                                 numberOfMonetaryTxs: Int,

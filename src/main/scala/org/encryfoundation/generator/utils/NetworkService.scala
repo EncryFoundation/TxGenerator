@@ -24,12 +24,12 @@ object NetworkService extends StrictLogging{
       entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
     ).withEffectiveUri(securedConnection = false, Host(node.nodeHost, node.nodePort)))
 
-  def requestUtxos(node: Node): Future[List[Box]] = {
+  def requestUtxos(node: Node, from: Int, to: Int): Future[List[Box]] = {
     val privKey = Mnemonic.createPrivKey(Option(node.mnemonicKey))
     val contractHash = Algos.encode(PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract.hash)
     Http().singleRequest(HttpRequest(
       method = HttpMethods.GET,
-      uri = s"/wallet/$contractHash/boxes/0/100"
+      uri = s"/wallet/$contractHash/boxes/$from/$to"
     ).withEffectiveUri(securedConnection = false, Host(node.explorerHost, node.explorerPort)))
       .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
       .map(_.utf8String)
