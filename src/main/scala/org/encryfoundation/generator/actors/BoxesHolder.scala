@@ -20,68 +20,40 @@ class BoxesHolder(settings: Settings,
                   influx: Option[ActorRef],
                   peer: Node) extends Actor with StrictLogging {
 
-  val cleanPeriod: FiniteDuration = settings.boxesHolderSettings.periodOfCleaningPool.seconds
-
   context.system.scheduler.schedule(
-    5.seconds, settings.boxesHolderSettings.getBoxesFromApi.seconds, self, RequestForNewBoxesFromApi
+    5.seconds, settings.boxesHolderSettings.askingAPIFrequency, self, RequestForNewBoxesFromApi
   )
 
   var bloomFilter: BloomFilter[String] = initBloomFilter
 
-  context.system.scheduler.schedule(1800.seconds, 1800.seconds) {
-    bloomFilter = initBloomFilter
-  }
-
-  /**
-    * Semigroup class for Cancellable. In this case while adding two instance we need to choose left one.
-    */
-  implicit val cancellableSemigroup: Semigroup[Cancellable] = new Semigroup[Cancellable] {
-    override def combine(x: Cancellable, y: Cancellable): Cancellable = x
-  }
+  context.system.scheduler.schedule(
+    settings.boxesHolderSettings.bloomFilterCleanupInterval,
+    settings.boxesHolderSettings.bloomFilterCleanupInterval) { bloomFilter = initBloomFilter }
 
   override def receive: Receive = boxesHolderBehavior()
 
-  def boxesHolderBehavior(pool: List[Batch] = List(), boxesForRemove: Map[String, Cancellable] = Map()): Receive = {
+  def boxesHolderBehavior(pool: List[Batch] = List()): Receive = {
     case BoxesFromApi(boxes) =>
       logger.info(s"BoxesHolder got message `BoxesFromApi`. Number of received boxes is: ${boxes.size}.")
-      //s"Current used boxes number is: ${boxesForRemove.size}.")
-      //val (boxesForUse: List[AssetBox], usedBoxes: Map[String, Cancellable]) = cleanReceivedBoxesFromUsed(boxesForRemove, boxes)
-      //logger.info(s"BoxesForUse number after comparison is: ${boxesForUse.size}. usedBoxes number is: ${usedBoxes.size}.")
       val batchesPool: List[Batch] = batchesForTransactions(boxes)
       val newBatches: List[Batch] = pool ++: batchesPool
-      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(newBatches.size, boxesForRemove.size))
+      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(newBatches.size))
       logger.info(s"Number of batches is: ${newBatches.size}")
-      context.become(boxesHolderBehavior(newBatches, Map.empty))
+      context.become(boxesHolderBehavior(newBatches))
 
     case AskBoxesFromGenerator =>
       logger.info(s"BoxesHolder got message `AskBoxesFromGenerator`. Current pool is: ${pool.size}")
       val batchesForTxs: List[Batch] = pool.take(settings.transactions.numberOfMonetaryTxs)
-      //      val usedBoxed: Map[String, Cancellable] = batchesForTxs.flatMap(_.boxes.map { box =>
-      //        val boxId: String = Algos.encode(box.id)
-      //        (boxId, context.system.scheduler.scheduleOnce(cleanPeriod, self, BoxForRemovingFromPool(boxId)))
-      //      }).toMap
-      //      logger.info(s"Updated number of used boxes: ${usedBoxed.size}")
-      //      val totalNumberOfUsedBoxes: Map[String, Cancellable] = usedBoxed |+| boxesForRemove
-      //      logger.info(s"Total number of used boxes: ${totalNumberOfUsedBoxes.size}")
       if (settings.transactions.numberOfMonetaryTxs > 0)
         batchesForTxs.foreach(batch => sender() ! BoxesForGenerator(batch.boxes, 2))
       logger.info(s"Number of batches before diff: ${pool.size}.")
       val resultedBatches: List[Batch] = pool.drop(settings.transactions.numberOfMonetaryTxs)
       logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
-      //      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(resultedBatches.map(_.boxes.size).sum, totalNumberOfUsedBoxes.size))
       influx.foreach(_ ! SentBatches(resultedBatches.size))
-      context.become(boxesHolderBehavior(resultedBatches, Map.empty))
-
-    case BoxForRemovingFromPool(id) =>
-      logger.info(s"Received request for removing box with id: $id. Current number of boxes for remove is: ${boxesForRemove.size}.")
-      logger.info(s"${boxesForRemove.get(id).isDefined}")
-      val updatedUsedBoxesForRemove: Map[String, Cancellable] = boxesForRemove - id
-      logger.info(s"Number of boxes for remove after deleting element is: ${updatedUsedBoxesForRemove.size}.")
-      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(pool.map(_.boxes.size).sum, updatedUsedBoxesForRemove.size))
-      context.become(boxesHolderBehavior(pool, updatedUsedBoxesForRemove))
+      context.become(boxesHolderBehavior(resultedBatches))
 
     case RequestForNewBoxesFromApi =>
-      if (pool.size < 1000) {
+      if (pool.size < settings.boxesHolderSettings.poolSize) {
         logger.info(s"Current pool size is: ${pool.size}. Asking new boxes from api!")
         getBoxes(0, settings.boxesHolderSettings.rangeForAskingBoxes)
       }
@@ -119,7 +91,7 @@ class BoxesHolder(settings: Settings,
   def getBoxes(from: Int, to: Int): Future[Unit] =
     NetworkService.requestUtxos(peer, from, to).map { request =>
       logger.info(s"Boxes from API: ${request.size}")
-      if (request.nonEmpty) {
+      if (request.nonEmpty && to < settings.boxesHolderSettings.maxPoolSize) {
         val newFrom: Int = from + settings.boxesHolderSettings.rangeForAskingBoxes
         val newTo: Int = to + settings.boxesHolderSettings.rangeForAskingBoxes
         getBoxes(newFrom, newTo)
@@ -132,7 +104,9 @@ class BoxesHolder(settings: Settings,
     }.map(boxes => self ! BoxesFromApi(boxes))
 
   def initBloomFilter: BloomFilter[String] = BloomFilter.create(
-    Funnels.stringFunnel(Charsets.UTF_8), 300000.toLong, 0.01
+    Funnels.stringFunnel(Charsets.UTF_8),
+    settings.boxesHolderSettings.bloomFilterCapacity,
+    settings.boxesHolderSettings.bloomFilterFailureProbability
   )
 }
 
@@ -149,7 +123,5 @@ object BoxesHolder {
   case class BoxesForGenerator(list: List[AssetBox], txType: Int)
 
   case class Batch(boxes: List[AssetBox])
-
-  case class BoxForRemovingFromPool(boxId: String)
 
 }

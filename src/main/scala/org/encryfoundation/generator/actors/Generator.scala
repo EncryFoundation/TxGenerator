@@ -21,7 +21,7 @@ class Generator(settings: Settings,
 
   val boxesHolder: ActorRef = context.system.actorOf(
       BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.explorerHost}")
-  context.system.scheduler.schedule(10.seconds, settings.generator.askBoxesHolderForBoxesPeriod.seconds) {
+  context.system.scheduler.schedule(10.seconds, settings.generator.transactionsSendingFrequency.seconds) {
     boxesHolder ! AskBoxesFromGenerator
     logger.info(s"Generator asked boxesHolder for new boxes.")
   }
