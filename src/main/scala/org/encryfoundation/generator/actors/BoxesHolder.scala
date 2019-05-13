@@ -7,9 +7,6 @@ import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.InfluxActor._
 import org.encryfoundation.generator.transaction.box.AssetBox
 import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
-import cats.instances.all._
-import cats.kernel.Semigroup
-import cats.syntax.semigroup._
 import com.google.common.base.Charsets
 import com.google.common.hash.{BloomFilter, Funnels}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -28,7 +25,9 @@ class BoxesHolder(settings: Settings,
 
   context.system.scheduler.schedule(
     settings.boxesHolderSettings.bloomFilterCleanupInterval,
-    settings.boxesHolderSettings.bloomFilterCleanupInterval) { bloomFilter = initBloomFilter }
+    settings.boxesHolderSettings.bloomFilterCleanupInterval) {
+    bloomFilter = initBloomFilter
+  }
 
   override def receive: Receive = boxesHolderBehavior()
 
@@ -37,20 +36,32 @@ class BoxesHolder(settings: Settings,
       logger.info(s"BoxesHolder got message `BoxesFromApi`. Number of received boxes is: ${boxes.size}.")
       val batchesPool: List[Batch] = batchesForTransactions(boxes)
       val newBatches: List[Batch] = pool ++: batchesPool
-      influx.foreach(_ ! NewAndUsedOutputsInGeneratorMempool(newBatches.size))
+      influx.foreach(_ ! PoolState(newBatches.size))
       logger.info(s"Number of batches is: ${newBatches.size}")
       context.become(boxesHolderBehavior(newBatches))
 
     case AskBoxesFromGenerator =>
       logger.info(s"BoxesHolder got message `AskBoxesFromGenerator`. Current pool is: ${pool.size}")
-      val batchesForTxs: List[Batch] = pool.take(settings.transactions.numberOfMonetaryTxs)
-      if (settings.transactions.numberOfMonetaryTxs > 0)
-        batchesForTxs.foreach(batch => sender() ! BoxesForGenerator(batch.boxes, 2))
+      val batchesAfterMT: List[Batch] =
+        if (settings.transactions.numberOfMonetaryTxs > 0) {
+          val batchesForTxs: List[Batch] = pool.take(settings.transactions.numberOfMonetaryTxs)
+          batchesForTxs.foreach(batch => sender() ! BoxesForGenerator(batch.boxes, 2))
+          pool.drop(settings.transactions.numberOfMonetaryTxs)
+        } else pool
+      influx.foreach(_ ! PoolState(batchesAfterMT.size))
+
+      val batchesAfterDT: List[Batch] =
+        if (settings.transactions.numberOfDataTxs > 0) {
+          val batchesForTxs: List[Batch] = batchesAfterMT.take(settings.transactions.numberOfDataTxs)
+          batchesForTxs.foreach(batch => sender() ! BoxesForGenerator(batch.boxes, 1))
+          batchesAfterMT.drop(settings.transactions.numberOfDataTxs)
+        } else batchesAfterMT
+      influx.foreach(_ ! PoolState(batchesAfterDT.size))
+
       logger.info(s"Number of batches before diff: ${pool.size}.")
-      val resultedBatches: List[Batch] = pool.drop(settings.transactions.numberOfMonetaryTxs)
-      logger.info(s"Number of batches after diff: ${resultedBatches.size}.")
-      influx.foreach(_ ! SentBatches(resultedBatches.size))
-      context.become(boxesHolderBehavior(resultedBatches))
+      logger.info(s"Number of batches after diff: ${batchesAfterDT.size}.")
+      influx.foreach(_ ! SentBatches(batchesAfterDT.size))
+      context.become(boxesHolderBehavior(batchesAfterDT))
 
     case RequestForNewBoxesFromApi =>
       if (pool.size < settings.boxesHolderSettings.poolSize) {
