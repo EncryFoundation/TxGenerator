@@ -54,6 +54,10 @@ class Generator(settings: Settings,
         settings.transactions.numberOfCreatedDirectives
       )
     }
+    logger.info(s"Commit tx ${Algos.encode(transaction.id)} with type: ${txsType match {
+      case 1 => "DataTx"
+      case 2 => "MonetaryTx"
+    }}")
     settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
   }
 }
