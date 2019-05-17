@@ -1,3 +1,4 @@
+
 name         := "TransactionsGenerator"
 version      := "0.8.2"
 organization := "org.encry"
@@ -33,7 +34,9 @@ libraryDependencies ++= Seq(
   "org.typelevel"        % "cats-core_2.12"   % "1.0.1",
   "org.typelevel"        % "cats-kernel_2.12" % "1.0.1",
   "org.typelevel"        % "cats-macros_2.12" % "1.0.1",
-  "com.google.guava"     % "guava"             % "27.1-jre"
+  "com.google.guava"     % "guava"            % "27.1-jre",
+  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
+  "commons-net"          % "commons-net"      % "3.3"
 ) ++ loggingDependencies ++ testingDependencies
 
 scalacOptions += "-Ypartial-unification"
@@ -45,4 +48,8 @@ resolvers ++= Seq(
   "SonaType" at "https://oss.sonatype.org/content/groups/public",
   "Typesafe maven releases" at "http://repo.typesafe.com/typesafe/maven-releases/",
   "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+)
+
+PB.targets in Compile := Seq(
+  scalapb.gen() -> (sourceManaged in Compile).value / "protobuf"
 )
