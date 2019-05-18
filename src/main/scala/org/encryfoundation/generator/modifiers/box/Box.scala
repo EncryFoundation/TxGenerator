@@ -4,6 +4,8 @@ import com.google.common.primitives.Longs
 import io.circe.{Decoder, DecodingFailure, Encoder}
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
+import org.encryfoundation.prismlang.core.Types
+import org.encryfoundation.prismlang.core.wrapped.{PObject, PValue}
 
 trait Box {
 
@@ -16,6 +18,18 @@ trait Box {
   lazy val id: ADKey = ADKey @@ Algos.hash(Longs.toByteArray(nonce)).updated(0, typeId)
 
   def isAmountCarrying: Boolean = this.isInstanceOf[MonetaryBox]
+
+  val tpe: Types.Product = Types.EncryBox
+
+  def asVal: PValue = PValue(asPrism, tpe)
+
+  lazy val baseFields: Map[String, PValue] = Map(
+    "contractHash" -> PValue(proposition.contractHash, Types.PCollection.ofByte),
+    "typeId"       -> PValue(typeId.toLong, Types.PInt),
+    "id"           -> PValue(id, Types.PCollection.ofByte)
+  )
+
+  def asPrism: PObject = PObject(baseFields, tpe)
 }
 
 object Box {

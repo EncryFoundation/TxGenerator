@@ -10,6 +10,7 @@ case class Settings(peers: List[Node],
                     transactions: TransactionsSettings,
                     network: NetworkSettings,
                     ntp: NetworkTimeProviderSettings)
+                    multisig: MultisigSettings)
 
 case class Node(explorerHost: String,
                 explorerPort: Int,
@@ -34,10 +35,13 @@ case class BoxesHolderSettings(askingAPIFrequency: FiniteDuration,
 
 case class TransactionsSettings(numberOfDataTxs: Int,
                                 numberOfMonetaryTxs: Int,
+                                numberOfMultisigTxs: Int,
                                 requiredAmount: Int,
                                 feeAmount: Int,
                                 dataTxSize: Int,
                                 numberOfCreatedDirectives: Int)
+
+case class MultisigSettings(checkTxMinedPeriod: Int, numberOfBlocksToCheck: Int)
 
 case class NetworkSettings(syncPacketLength: Int,
                            bindAddressHost: String,
