@@ -26,14 +26,19 @@ object NetworkService extends StrictLogging{
 
   def requestUtxos(node: Node, from: Int, to: Int): Future[List[Box]] = {
     val privKey = Mnemonic.createPrivKey(Option(node.mnemonicKey))
-    val contractHash = Algos.encode(PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract.hash)
+    val contractHash: String = Algos.encode(PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract.hash)
+    logger.info(s"/wallet/$contractHash/boxes/$from/$to")
     Http().singleRequest(HttpRequest(
       method = HttpMethods.GET,
       uri = s"/wallet/$contractHash/boxes/$from/$to"
     ).withEffectiveUri(securedConnection = false, Host(node.explorerHost, node.explorerPort)))
       .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
       .map(_.utf8String)
-      .map(decode[List[Box]])
+      .map{x =>
+        val a = decode[List[Box]](x)
+        logger.info(s"$a")
+        a
+      }
       .flatMap(_.fold(Future.failed, Future.successful))
   }
 }
