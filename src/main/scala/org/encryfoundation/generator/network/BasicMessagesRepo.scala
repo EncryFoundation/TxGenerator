@@ -1,7 +1,6 @@
 package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
-
 import NetworkMessagesProto.GeneralizedNetworkProtoMessage
 import NetworkMessagesProto.GeneralizedNetworkProtoMessage.InnerMessage
 import NetworkMessagesProto.GeneralizedNetworkProtoMessage.InnerMessage._
@@ -14,7 +13,7 @@ import akka.util.{ByteString => AkkaByteString}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.network.BasicMessagesRepo.BasicMsgDataTypes.{InvData, ModifiersData}
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
-import org.encryfoundation.generator.utils.{CoreTaggedTypes, Settings}
+import org.encryfoundation.generator.utils.Settings
 import scorex.crypto.hash.Blake2b256
 import scala.util.Try
 

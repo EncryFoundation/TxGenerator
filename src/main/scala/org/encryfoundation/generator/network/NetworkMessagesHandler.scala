@@ -1,13 +1,12 @@
 package org.encryfoundation.generator.network
 
-import TransactionProto.TransactionProtoProto
 import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
-import org.encryfoundation.generator.network.BasicMessagesRepo.{MessageFromNetwork, ModifiersNetworkMessage, RequestModifiersNetworkMessage}
+import org.encryfoundation.generator.network.BasicMessagesRepo._
 import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInvForTx
-import org.encryfoundation.generator.modifiers.{Transaction, TransactionProtoSerializer, TransactionsFactory}
+import org.encryfoundation.generator.modifiers.{Transaction, TransactionProtoSerializer}
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.utils.{CoreTaggedTypes, Settings}
 import supertagged.@@
@@ -36,7 +35,7 @@ class NetworkMessagesHandler(settings: Settings) extends Actor with StrictLoggin
         )
       case _ =>
     }
-    case msg =>
+    case _ =>
   }
 }
 

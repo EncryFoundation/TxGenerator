@@ -1,7 +1,6 @@
 package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
-
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.io.Tcp.SO.KeepAlive
 import akka.io.Tcp._
@@ -15,7 +14,6 @@ import org.encryfoundation.generator.network.PeerHandler._
 import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
-
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContextExecutor
 

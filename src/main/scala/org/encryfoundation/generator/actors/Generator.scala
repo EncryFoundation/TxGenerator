@@ -9,11 +9,9 @@ import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
 import org.encryfoundation.generator.modifiers.{Transaction, TransactionsFactory}
 import org.encryfoundation.generator.modifiers.box.AssetBox
-
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
+import org.encryfoundation.generator.utils.{Node, Settings}
 import scorex.utils
-
 import scala.concurrent.Future
 import scala.concurrent.duration._
 

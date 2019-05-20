@@ -2,8 +2,6 @@ package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
 import java.nio.ByteOrder
-
-import NetworkMessagesProto.GeneralizedNetworkProtoMessage
 import akka.actor.{Actor, ActorRef, Cancellable, Props}
 import akka.io.Tcp
 import akka.io.Tcp._
@@ -13,11 +11,10 @@ import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.network.PeerHandler._
 import org.encryfoundation.generator.network.BasicMessagesRepo._
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
-
 import scala.annotation.tailrec
 import scala.collection.immutable.HashMap
 import scala.concurrent.ExecutionContextExecutor
-import scala.util.{Failure, Random, Success}
+import scala.util.{Failure, Success}
 
 class PeerHandler(remoteAddress: InetSocketAddress,
                   listener: ActorRef,
