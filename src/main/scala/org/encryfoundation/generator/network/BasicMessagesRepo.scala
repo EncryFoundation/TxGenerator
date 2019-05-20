@@ -1,11 +1,12 @@
 package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
+
 import NetworkMessagesProto.GeneralizedNetworkProtoMessage
 import NetworkMessagesProto.GeneralizedNetworkProtoMessage.InnerMessage
-import NetworkMessagesProto.GeneralizedNetworkProtoMessage.InnerMessage.{HandshakeProtoMessage, InvProtoMessage, ModifiersProtoMessage, RequestModifiersProtoMessage}
+import NetworkMessagesProto.GeneralizedNetworkProtoMessage.InnerMessage._
 import NetworkMessagesProto.GeneralizedNetworkProtoMessage.ModifiersProtoMessage.MapFieldEntry
-import NetworkMessagesProto.GeneralizedNetworkProtoMessage.{HandshakeProtoMessage => hPM, InvProtoMessage => InvPM, ModifiersProtoMessage => ModifiersPM, RequestModifiersProtoMessage => rModsPM}
+import NetworkMessagesProto.GeneralizedNetworkProtoMessage.{GetPeersProtoMessage => GetPeersProto, HandshakeProtoMessage => hPM, InvProtoMessage => InvPM, ModifiersProtoMessage => ModifiersPM, PeersProtoMessage => PeersPM, RequestModifiersProtoMessage => rModsPM, SyncInfoProtoMessage => sIPM}
 import SyntaxMessageProto.InetSocketAddressProtoMessage
 import akka.actor.ActorRef
 import com.google.protobuf.{ByteString => GoogleByteString}
@@ -13,7 +14,7 @@ import akka.util.{ByteString => AkkaByteString}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.network.BasicMessagesRepo.BasicMsgDataTypes.{InvData, ModifiersData}
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
-import org.encryfoundation.generator.utils.Settings
+import org.encryfoundation.generator.utils.{CoreTaggedTypes, Settings}
 import scorex.crypto.hash.Blake2b256
 import scala.util.Try
 
@@ -91,8 +92,18 @@ object BasicMessagesRepo extends StrictLogging {
       require(netMessage.magic.toByteArray.sameElements(MessageOptions.MAGIC.toByteArray),
         s"Wrong MAGIC! Got ${netMessage.magic.toByteArray.mkString(",")}")
       netMessage.innerMessage match {
+        case InnerMessage.SyncInfoProtoMessage(_) =>
+          checkMessageValidity(SyncInfoNetworkMessageSerializer.fromProto, netMessage.innerMessage, netMessage.checksum)
+        case InnerMessage.InvProtoMessage(_) =>
+          checkMessageValidity(InvNetworkMessageSerializer.fromProto, netMessage.innerMessage, netMessage.checksum)
         case InnerMessage.RequestModifiersProtoMessage(_) =>
           checkMessageValidity(RequestModifiersSerializer.fromProto, netMessage.innerMessage, netMessage.checksum)
+        case InnerMessage.ModifiersProtoMessage(_) =>
+          checkMessageValidity(ModifiersNetworkMessageSerializer.fromProto, netMessage.innerMessage, netMessage.checksum)
+        case InnerMessage.GetPeersProtoMessage(_) =>
+          checkMessageValidity(GetPeersNetworkMessage.fromProto, netMessage.innerMessage, netMessage.checksum)
+        case InnerMessage.PeersProtoMessage(_) =>
+          checkMessageValidity(PeersNetworkMessageSerializer.fromProto, netMessage.innerMessage, netMessage.checksum)
         case InnerMessage.HandshakeProtoMessage(_) =>
           checkMessageValidity(HandshakeSerializer.fromProto, netMessage.innerMessage, netMessage.checksum)
         case InnerMessage.Empty => throw new RuntimeException("Empty inner message!")
@@ -121,6 +132,46 @@ object BasicMessagesRepo extends StrictLogging {
       require(calculatedCheckSumBytes.toByteArray.sameElements(requiredBytes.toByteArray),
         "Checksum of received message is invalid!")
       networkMessage
+    }
+  }
+
+  /**
+    * @param esi - EncrySyncInfo case class which contains sequence of modifiers ids/
+    *
+    *            This message is a nested type of generalized network message. It's sent with the aim to show other peer,
+    *            which last N modifiers this peer has.
+    *            Response for this message is an InvMessage which contains all modifiers older than local.
+    */
+
+  case class SyncInfoNetworkMessage(esi: SyncInfo) extends NetworkMessage {
+
+    override val messageName: String = "Sync"
+
+    override def checkSumBytes(innerMessage: InnerMessage): Array[Byte] =
+      innerMessage.syncInfoProtoMessage.map(_.toByteArray).getOrElse(Array.emptyByteArray)
+
+    override def toInnerMessage: InnerMessage = SyncInfoNetworkMessageSerializer.toProto(this)
+
+    override val NetworkMessageTypeID: Byte = SyncInfoNetworkMessage.NetworkMessageTypeID
+
+    override def isValid(setting: Settings): Boolean =
+      if (esi.lastHeaderIds.size <= setting.network.syncPacketLength) true else false
+  }
+
+  object SyncInfoNetworkMessage {
+
+    val NetworkMessageTypeID: Byte = 65: Byte
+  }
+
+  object SyncInfoNetworkMessageSerializer extends ProtoNetworkMessagesSerializer[SyncInfoNetworkMessage] {
+
+    override def toProto(message: SyncInfoNetworkMessage): InnerMessage =
+      SyncInfoProtoMessage(sIPM().withLastHeaderIds(message.esi.lastHeaderIds.map(GoogleByteString.copyFrom)))
+
+    override def fromProto(message: InnerMessage): Option[SyncInfoNetworkMessage] = message.syncInfoProtoMessage match {
+      case Some(value) =>
+        Some(SyncInfoNetworkMessage(SyncInfo(value.lastHeaderIds.map(modId => ModifierId @@ modId.toByteArray))))
+      case None => Option.empty[SyncInfoNetworkMessage]
     }
   }
 
@@ -254,6 +305,73 @@ object BasicMessagesRepo extends StrictLogging {
   }
 
   /**
+    * This network message sends to a random peer as a request for receiver's known peers.
+    */
+
+  case object GetPeersNetworkMessage extends NetworkMessage {
+
+    override val messageName: String = "GetPeers message"
+
+    override def toInnerMessage: InnerMessage = toProto
+
+    def toProto: InnerMessage = GetPeersProtoMessage(GetPeersProto())
+
+    def fromProto(message: InnerMessage): Option[GetPeersNetworkMessage.type] = message.getPeersProtoMessage match {
+      case Some(_) => Some(GetPeersNetworkMessage)
+      case None => Option.empty[GetPeersNetworkMessage.type]
+    }
+
+    override def checkSumBytes(innerMessage: InnerMessage): Array[Byte] =
+      innerMessage.getPeersProtoMessage.map(_.toByteArray).getOrElse(Array.emptyByteArray)
+
+    override val NetworkMessageTypeID: Byte = 1: Byte
+
+    override def isValid(setting: Settings): Boolean = true
+  }
+
+  /**
+    * @param peers - sequence of known by this peer other peers.
+    *
+    *              This network message sends directly to the sender of 'GetPeers' message.
+    */
+
+  case class PeersNetworkMessage(peers: Seq[InetSocketAddress]) extends NetworkMessage {
+
+    override val messageName: String = "Peers message"
+
+    override def toInnerMessage: InnerMessage = PeersNetworkMessageSerializer.toProto(this)
+
+    override def checkSumBytes(innerMessage: InnerMessage): Array[Byte] =
+      innerMessage.peersProtoMessage.map(_.toByteArray).getOrElse(Array.emptyByteArray)
+
+    override val NetworkMessageTypeID: Byte = PeersNetworkMessage.NetworkMessageTypeID
+
+    override def isValid(setting: Settings): Boolean = true
+  }
+
+  object PeersNetworkMessage {
+
+    val NetworkMessageTypeID: Byte = 2: Byte
+  }
+
+  object PeersNetworkMessageSerializer extends ProtoNetworkMessagesSerializer[PeersNetworkMessage] {
+
+    override def toProto(message: PeersNetworkMessage): InnerMessage = PeersProtoMessage(
+      PeersPM().withPeers(
+        message.peers.map(element => InetSocketAddressProtoMessage().withHost(element.getHostName).withPort(element.getPort))
+      ))
+
+    override def fromProto(message: InnerMessage): Option[PeersNetworkMessage] = message.peersProtoMessage match {
+      case Some(value) => value.peers match {
+        case peers: Seq[_] if peers.nonEmpty =>
+          Some(PeersNetworkMessage(value.peers.map(element => new InetSocketAddress(element.host, element.port))))
+        case _ => Option.empty[PeersNetworkMessage]
+      }
+      case None => Option.empty[PeersNetworkMessage]
+    }
+  }
+
+  /**
     * @param protocolVersion - peer network communication protocol version
     * @param nodeName        - peer name
     * @param declaredAddress - peer address
@@ -330,10 +448,12 @@ object BasicMessagesRepo extends StrictLogging {
                            direction: ConnectionType,
                            handshake: Handshake) {
 
-    def publicPeer: Boolean = handshake.declaredAddress.contains(socketAddress)
-
-    override def hashCode(): Int = socketAddress.hashCode()
-
     override def toString: String = s"ConnectedPeer($socketAddress)"
+  }
+
+  case class SyncInfo(lastHeaderIds: Seq[ModifierId]) {
+
+    def startingPoints = lastHeaderIds.map(id => ModifierTypeId @@ (101: Byte) -> id)
+
   }
 }

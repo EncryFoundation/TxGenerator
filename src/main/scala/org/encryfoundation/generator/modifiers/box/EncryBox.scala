@@ -1,4 +1,4 @@
-package org.encryfoundation.generator.transaction.box
+package org.encryfoundation.generator.modifiers.box
 
 trait EncryBox[P <: EncryProposition] extends EncryBaseBox {
 

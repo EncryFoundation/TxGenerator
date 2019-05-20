@@ -1,7 +1,28 @@
-package org.encryfoundation.generator.transaction.directives
+package org.encryfoundation.generator.modifiers.directives
+
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage.DirectiveProto
 
 import scala.util.{Failure, Try}
 import org.encryfoundation.common.serialization.Serializer
+
+
+trait ProtoDirectiveSerializer[T] {
+
+  def toProto(message: T): DirectiveProtoMessage
+
+  def fromProto(message: DirectiveProtoMessage): Option[T]
+}
+
+object DirectiveProtoSerializer {
+  def fromProto(message: DirectiveProtoMessage): Option[Directive] = message.directiveProto match {
+    case DirectiveProto.AssetIssuingDirectiveProto(_) => AssetIssuingDirectiveProtoSerializer.fromProto(message)
+    case DirectiveProto.DataDirectiveProto(_) => DataDirectiveProtoSerializer.fromProto(message)
+    case DirectiveProto.TransferDirectiveProto(_) => TransferDirectiveProtoSerializer.fromProto(message)
+    case DirectiveProto.ScriptedAssetDirectiveProto(_) => ScriptedAssetDirectiveProtoSerializer.fromProto(message)
+    case DirectiveProto.Empty => None
+  }
+}
 
 object DirectiveSerializer extends Serializer[Directive] {
 

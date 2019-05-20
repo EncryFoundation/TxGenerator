@@ -17,35 +17,35 @@ class PeerHandler(remoteAddress: InetSocketAddress,
                   settings: Settings,
                   timeProvider: NetworkTimeProvider,
                   direction: ConnectionType,
-                  messagesHandler: ActorRef) extends Actor with StrictLogging {
+                  receivedMessagesHandler: ActorRef) extends Actor with StrictLogging {
 
   context.watch(listener)
 
   implicit val ec: ExecutionContextExecutor = context.dispatcher
 
-  override def preStart(): Unit = context.parent ! AddPeerToConnectionList(remoteAddress)
+  override def preStart(): Unit = self ! StartIteration
 
   override def postStop(): Unit = {
     logger.info(s"Peer handler $self to $remoteAddress is destroyed.")
+    context.parent ! RemovePeerFromConnectionList(remoteAddress)
     listener ! Close
   }
 
-  def awaitingConnectionBehaviour(isHandshakeSent: Boolean,
-                                  receivedHandshake: Option[Handshake],
-                                  timeout: Option[Cancellable]): Receive = {
-    case AddedToConnectionListSuccessfully => timeProvider.time() map { time =>
+  var receivedHandshake: Option[Handshake] = None
+  var isHandshakeSent: Boolean = false
+  var timeout: Option[Cancellable] = None
+
+  def awaitingConnectionBehaviour: Receive = {
+    case StartIteration => timeProvider.time() map { time =>
       val handshake: Handshake = Handshake(
         protocolToBytes(settings.network.appVersion),
         settings.network.nodeName, None, time
       )
       listener ! Write(ByteString(GeneralizedNetworkMessage.toProto(handshake).toByteArray))
       logger.info(s"Sent initial handshake to $remoteAddress.")
-      if (receivedHandshake.isDefined) self ! HandshakeDone
-      else context.become(awaitingConnectionBehaviour(
-        isHandshakeSent = true,
-        None,
-        Some(context.system.scheduler.scheduleOnce(settings.network.handshakeTimeout, self, HandshakeTimeout)))
-      )
+      isHandshakeSent = true
+      timeout = Some(context.system.scheduler.scheduleOnce(settings.network.handshakeTimeout, self, HandshakeTimeout))
+      if (receivedHandshake.isDefined && isHandshakeSent) self ! HandshakeDone
     }
 
     case HandshakeTimeout =>
@@ -56,7 +56,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
       listener ! ResumeReading
       timeout.foreach(_.cancel())
-      val peer: ConnectedPeer = ConnectedPeer(remoteAddress, self, direction, receivedHandshake.get)
+      val peer: ConnectedPeer = ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)
       context.become(workingBehaviour(peer))
 
     case Received(data) => GeneralizedNetworkMessage.fromProto(data) match {
@@ -64,8 +64,8 @@ class PeerHandler(remoteAddress: InetSocketAddress,
         case handshake: Handshake =>
           logger.info(s"Got a Handshake from $remoteAddress.")
           listener ! ResumeReading
-          if (isHandshakeSent) self ! HandshakeDone
-          else context.become(awaitingConnectionBehaviour(isHandshakeSent = false, Some(handshake), timeout))
+          receivedHandshake = Some(handshake)
+          if (isHandshakeSent && receivedHandshake.isDefined) self ! HandshakeDone
         case message => logger.info(s"Expecting handshake, but received ${message.messageName}.")
       }
       case Failure(exception) =>
@@ -75,7 +75,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
     case _ =>
   }
 
-  override def receive: Receive = awaitingConnectionBehaviour(isHandshakeSent = false, None, None)
+  override def receive: Receive = awaitingConnectionBehaviour
 
   def workingBehaviour(cp: ConnectedPeer): Receive = defaultLogic
     .orElse(readDataFromRemote(cp))
@@ -95,7 +95,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
     case Received(data) => BasicMessagesRepo.GeneralizedNetworkMessage.fromProto(data) match {
       case Success(message) =>
         logger.info(s"Got new network message ${message.messageName} from $remoteAddress.")
-        messagesHandler ! BasicMessagesRepo.MessageFromNetwork(message, Some(cp))
+        receivedMessagesHandler ! BasicMessagesRepo.MessageFromNetwork(message, Some(cp))
       case _ => logger.info(s"Can not parse received message!")
     }
       listener ! ResumeReading
@@ -104,8 +104,8 @@ class PeerHandler(remoteAddress: InetSocketAddress,
   def writeDataToRemote: Receive = {
     case message: NetworkMessage =>
       val serializedMessage: GeneralizedNetworkProtoMessage = BasicMessagesRepo.GeneralizedNetworkMessage.toProto(message)
+      logger.info(s"Write $message to $remoteAddress")
       listener ! Write(ByteString(serializedMessage.toByteArray))
-      logger.info(s"Sent ${message.messageName} to $remoteAddress")
 
     case _ => logger.info(s"Got something strange on PeerActor connected to $remoteAddress")
   }
@@ -115,17 +115,15 @@ class PeerHandler(remoteAddress: InetSocketAddress,
 
 object PeerHandler {
 
+  case object StartIteration
+
   sealed trait ConnectionMessages
 
   case object HandshakeTimeout extends ConnectionMessages
 
   case object HandshakeDone extends ConnectionMessages
 
-  case object InnerPong extends ConnectionMessages
-
-  case object AddedToConnectionListSuccessfully extends ConnectionMessages
-
-  case class AddPeerToConnectionList(peer: InetSocketAddress) extends ConnectionMessages
+  case class RemovePeerFromConnectionList(peer: InetSocketAddress) extends ConnectionMessages
 
   def props(remoteAddress: InetSocketAddress,
             listener: ActorRef,

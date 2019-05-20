@@ -1,6 +1,9 @@
-package org.encryfoundation.generator.transaction.directives
+package org.encryfoundation.generator.modifiers.directives
 
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage.AssetIssuingDirectiveProtoMessage
 import com.google.common.primitives.{Bytes, Ints, Longs}
+import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.serialization.Serializer
@@ -8,7 +11,8 @@ import org.encryfoundation.common.utils.Utils
 import org.encryfoundation.common.{Algos, Constants}
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
 import scorex.crypto.hash.Digest32
-import org.encryfoundation.generator.transaction.box.{Box, EncryProposition, TokenIssuingBox}
+import org.encryfoundation.generator.modifiers.box.{Box, EncryProposition, TokenIssuingBox}
+
 import scala.util.Try
 
 case class AssetIssuingDirective(contractHash: ContractHash, amount: Long) extends Directive {
@@ -26,6 +30,9 @@ case class AssetIssuingDirective(contractHash: ContractHash, amount: Long) exten
     ))
 
   override def serializer: Serializer[M] = AssetIssuingDirectiveSerializer
+
+  override def toDirectiveProto: DirectiveProtoMessage = AssetIssuingDirectiveProtoSerializer.toProto(this)
+
 }
 
 object AssetIssuingDirective {
@@ -45,6 +52,22 @@ object AssetIssuingDirective {
     } yield AssetIssuingDirective(contractHash, amount)
   }
 }
+
+object AssetIssuingDirectiveProtoSerializer extends ProtoDirectiveSerializer[AssetIssuingDirective] {
+
+  override def toProto(message: AssetIssuingDirective): DirectiveProtoMessage =
+    DirectiveProtoMessage().withAssetIssuingDirectiveProto(AssetIssuingDirectiveProtoMessage()
+      .withAmount(message.amount)
+      .withContractHash(ByteString.copyFrom(message.contractHash))
+    )
+
+  override def fromProto(message: DirectiveProtoMessage): Option[AssetIssuingDirective] =
+    message.directiveProto.assetIssuingDirectiveProto match {
+      case Some(value) => Some(AssetIssuingDirective(value.contractHash.toByteArray, value.amount))
+      case None => Option.empty[AssetIssuingDirective]
+    }
+}
+
 
 object AssetIssuingDirectiveSerializer extends Serializer[AssetIssuingDirective] {
 

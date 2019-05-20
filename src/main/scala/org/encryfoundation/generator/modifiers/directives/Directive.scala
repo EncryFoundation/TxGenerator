@@ -1,9 +1,10 @@
-package org.encryfoundation.generator.transaction.directives
+package org.encryfoundation.generator.modifiers.directives
 
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage
 import io.circe._
 import org.encryfoundation.common.serialization.BytesSerializable
 import scorex.crypto.hash.Digest32
-import org.encryfoundation.generator.transaction.box.Box
+import org.encryfoundation.generator.modifiers.box.Box
 
 trait Directive extends BytesSerializable {
 
@@ -11,6 +12,8 @@ trait Directive extends BytesSerializable {
   val isValid: Boolean
 
   def boxes(digest: Digest32, idx: Int): Seq[Box]
+
+  def toDirectiveProto: DirectiveProtoMessage
 }
 
 object Directive {

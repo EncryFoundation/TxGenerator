@@ -1,7 +1,6 @@
 package org.encryfoundation.generator.utils
 
 import java.net.InetSocketAddress
-
 import scala.concurrent.duration.FiniteDuration
 
 case class Settings(peers: List[Node],
@@ -41,8 +40,10 @@ case class TransactionsSettings(numberOfDataTxs: Int,
                                 numberOfCreatedDirectives: Int)
 
 case class NetworkSettings(syncPacketLength: Int,
-                           bindAddress: InetSocketAddress,
-                           connectedPeer: InetSocketAddress,
+                           bindAddressHost: String,
+                           bindAddressPort: Int,
                            nodeName: String,
                            appVersion: String,
-                           handshakeTimeout: FiniteDuration)
+                           handshakeTimeout: FiniteDuration,
+                           peerForConnectionHost: String,
+                           peerForConnectionPort: Int)

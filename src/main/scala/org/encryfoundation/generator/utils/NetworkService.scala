@@ -9,15 +9,15 @@ import io.circe.syntax._
 import io.circe.parser.decode
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.transaction.PubKeyLockedContract
-import org.encryfoundation.generator.transaction.EncryTransaction
+import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.GeneratorApp._
-import org.encryfoundation.generator.transaction.box.Box
+import org.encryfoundation.generator.modifiers.box.Box
 
 import scala.concurrent.Future
 
 object NetworkService extends StrictLogging{
 
-  def commitTransaction(node: Node, tx: EncryTransaction): Future[HttpResponse] =
+  def commitTransaction(node: Node, tx: Transaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = "/transactions/send",
