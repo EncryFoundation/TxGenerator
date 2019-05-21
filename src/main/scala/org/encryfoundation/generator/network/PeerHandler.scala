@@ -35,15 +35,13 @@ class PeerHandler(remoteAddress: InetSocketAddress,
     listener ! Close
   }
 
-  var selfPeer: Option[ConnectedPeer] = None
   var chunksBuffer: ByteString = CompactByteString.empty
-  var receivedHandshake: Option[Handshake] = None
-  var isHandshakeSent: Boolean = false
-  var timeout: Option[Cancellable] = None
   var outMessagesBuffer: HashMap[Long, ByteString] = HashMap.empty
   var outMessagesCounter: Long = 0
 
-  def awaitingConnectionBehaviour: Receive = {
+  def awaitingConnectionBehaviour(isHandshakeSent: Boolean,
+                                  receivedHandshake: Option[Handshake],
+                                  timeout: Option[Cancellable]): Receive = {
     case StartIteration => timeProvider.time() map { time =>
       val handshake: Handshake = Handshake(
         protocolToBytes(settings.network.appVersion),
@@ -51,9 +49,15 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       )
       listener ! Write(ByteString(GeneralizedNetworkMessage.toProto(handshake).toByteArray))
       logger.info(s"Sent initial handshake to $remoteAddress.")
-      isHandshakeSent = true
-      timeout = Some(context.system.scheduler.scheduleOnce(settings.network.handshakeTimeout, self, HandshakeTimeout))
-      if (receivedHandshake.isDefined && isHandshakeSent) self ! HandshakeDone
+      if (receivedHandshake.isDefined) {
+        logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
+        timeout.foreach(_.cancel())
+        context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)))
+      } else context.become(awaitingConnectionBehaviour(
+        isHandshakeSent = true,
+        None,
+        Some(context.system.scheduler.scheduleOnce(settings.network.handshakeTimeout, self, HandshakeTimeout)))
+      )
     }
 
     case HandshakeTimeout =>
@@ -64,16 +68,19 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
       listener ! ResumeReading
       timeout.foreach(_.cancel())
-      selfPeer = Some(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get))
-      context.become(workingCycleWriting)
+      context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)))
 
     case Received(data) => GeneralizedNetworkMessage.fromProto(data) match {
       case Success(value) => value match {
         case handshake: Handshake =>
           logger.info(s"Got a Handshake from $remoteAddress.")
           listener ! ResumeReading
-          receivedHandshake = Some(handshake)
-          if (isHandshakeSent && receivedHandshake.isDefined) self ! HandshakeDone
+          if (isHandshakeSent) {
+            logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
+            timeout.foreach(_.cancel())
+            context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, handshake)))
+          } else context.become(awaitingConnectionBehaviour(isHandshakeSent, Some(handshake), timeout))
+
         case message => logger.info(s"Expecting handshake, but received ${message.messageName}.")
       }
       case Failure(exception) =>
@@ -83,7 +90,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
     case _ =>
   }
 
-  override def receive: Receive = awaitingConnectionBehaviour
+  override def receive: Receive = awaitingConnectionBehaviour(isHandshakeSent = false, None, None)
 
   def defaultLogic: Receive = {
     case cc: ConnectionClosed =>
@@ -97,11 +104,11 @@ class PeerHandler(remoteAddress: InetSocketAddress,
     case _ =>
   }
 
-  def workingCycleWriting: Receive = workingCycleLocalInterfaceWritingMode
-    .orElse(workingCycleRemoteInterface)
+  def workingCycleWriting(cp: ConnectedPeer): Receive = workingCycleLocalInterfaceWritingMode(cp)
+    .orElse(workingCycleRemoteInterface(cp))
     .orElse(defaultLogic)
 
-  def workingCycleLocalInterfaceWritingMode: Receive = {
+  def workingCycleLocalInterfaceWritingMode(cp: ConnectedPeer): Receive = {
     case message: NetworkMessage =>
       def sendMessage(): Unit = {
         outMessagesCounter += 1
@@ -116,19 +123,19 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       logger.debug(s"Failed to write ${msg.length} bytes to $remoteAddress cause ${fail.cause}, switching to buffering mode")
       listener ! ResumeReading
       toBuffer(id, msg)
-      context.become(workingCycleBuffering)
+      context.become(workingCycleBuffering(cp))
     case Ack(_) => // ignore ACKs in stable mode
     case WritingResumed => // ignore in stable mode
   }
 
-  def workingCycleRemoteInterface: Receive = {
+  def workingCycleRemoteInterface(cp: ConnectedPeer): Receive = {
     case Received(data) =>
       val packet: (List[ByteString], ByteString) = getPacket(chunksBuffer ++ data)
       chunksBuffer = packet._2
       packet._1.find { packet =>
         GeneralizedNetworkMessage.fromProto(packet) match {
           case Success(message) =>
-            receivedMessagesHandler ! MessageFromNetwork(message, selfPeer)
+            receivedMessagesHandler ! MessageFromNetwork(message, Some(cp))
             logger.info("Received message " + message.messageName + " from " + remoteAddress)
             false
           case Failure(e) =>
@@ -139,12 +146,12 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       listener ! ResumeReading
   }
 
-  def workingCycleBuffering: Receive = workingCycleLocalInterfaceBufferingMode
-    .orElse(workingCycleRemoteInterface)
+  def workingCycleBuffering(cp: ConnectedPeer): Receive = workingCycleLocalInterfaceBufferingMode(cp)
+    .orElse(workingCycleRemoteInterface(cp))
     .orElse(defaultLogic)
 
   // operate in ACK mode until all buffered messages are transmitted
-  def workingCycleLocalInterfaceBufferingMode: Receive = {
+  def workingCycleLocalInterfaceBufferingMode(cp: ConnectedPeer): Receive = {
     case message: NetworkMessage =>
       outMessagesCounter += 1
       val messageToNetwork: Array[Byte] = GeneralizedNetworkMessage.toProto(message).toByteArray
@@ -161,7 +168,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       if (outMessagesBuffer.nonEmpty) writeFirst()
       else {
         logger.info("Buffered messages processed, exiting buffering mode")
-        context become workingCycleWriting
+        context.become(workingCycleWriting(cp))
       }
   }
 

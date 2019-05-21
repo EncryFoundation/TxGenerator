@@ -62,7 +62,7 @@ class NetworkServer(settings: Settings,
       logger.info(s"Failed to connect to: ${c.remoteAddress}")
 
     case CheckConnection if !isConnected =>
-      IO(Tcp) ! Connect(connectingPeer, options = KeepAlive(true) :: Nil)
+      IO(Tcp) ! Connect(connectingPeer, options = KeepAlive(true) :: Nil, timeout = Some(300.seconds))
       logger.info(s"Trying to connect to $connectingPeer.")
 
     case CheckConnection =>
@@ -77,7 +77,7 @@ class NetworkServer(settings: Settings,
       val inv: BasicMessagesRepo.NetworkMessage =
         InvNetworkMessage(ModifierTypeId @@ Transaction.modifierTypeId -> Seq(ModifierId @@ tx.id))
       tmpConnectionHandler.foreach(_ ! inv)
-      logger.info(s"Send inv message to: ${context.children.mkString(",")}")
+      logger.info(s"Send inv message to remote.")
 
     case msg@TransactionForCommit(_) => messagesHandler ! msg
 

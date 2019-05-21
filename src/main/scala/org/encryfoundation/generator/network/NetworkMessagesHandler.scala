@@ -33,6 +33,7 @@ class NetworkMessagesHandler(settings: Settings) extends Actor with StrictLoggin
         localGeneratedTransactions = localGeneratedTransactions.filter(tx =>
           !tmpTxs.contains(Algos.encode(tx.id))
         )
+        logger.info(s"Sent modifiers to node.")
       case _ =>
     }
     case _ =>
