@@ -50,7 +50,7 @@ class NetworkServer(settings: Settings,
       val handler: ActorRef = context.actorOf(
         PeerHandler.props(remote, sender(), settings, timeProvider, Outgoing, messagesHandler)
       )
-      println(s"Successfully connected to $remote. Creating handler: $handler.")
+      logger.info(s"Successfully connected to $remote. Creating handler: $handler.")
       isConnected = true
       tmpConnectionHandler = Some(handler)
       sender ! Register(handler)
