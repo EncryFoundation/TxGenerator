@@ -62,7 +62,7 @@ class NetworkServer(settings: Settings,
       logger.info(s"Failed to connect to: ${c.remoteAddress}")
 
     case CheckConnection if !isConnected =>
-      IO(Tcp) ! Connect(connectingPeer, options = KeepAlive(true) :: Nil, timeout = Some(300.seconds))
+      IO(Tcp) ! Connect(connectingPeer, options = KeepAlive(true) :: Nil, timeout = Some(5.seconds))
       logger.info(s"Trying to connect to $connectingPeer.")
 
     case CheckConnection =>
