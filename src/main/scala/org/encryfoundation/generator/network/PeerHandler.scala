@@ -10,6 +10,7 @@ import com.google.common.primitives.Ints
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.generator.network.PeerHandler._
 import org.encryfoundation.generator.network.BasicMessagesRepo._
+import org.encryfoundation.generator.network.NetworkServer.ConnectionSetupSuccessfully
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
 import scala.annotation.tailrec
 import scala.collection.immutable.HashMap
@@ -39,23 +40,25 @@ class PeerHandler(remoteAddress: InetSocketAddress,
   var outMessagesBuffer: HashMap[Long, ByteString] = HashMap.empty
   var outMessagesCounter: Long = 0
 
-  def awaitingConnectionBehaviour(isHandshakeSent: Boolean,
-                                  receivedHandshake: Option[Handshake],
-                                  timeout: Option[Cancellable]): Receive = {
+  var isHandshakeSent: Boolean = false
+  var receivedHandshake: Option[Handshake] = None
+
+  def awaitingConnectionBehaviour(timeout: Option[Cancellable]): Receive = {
+
     case StartIteration => timeProvider.time() map { time =>
       val handshake: Handshake = Handshake(
         protocolToBytes(settings.network.appVersion),
         settings.network.nodeName, None, time
       )
       listener ! Write(ByteString(GeneralizedNetworkMessage.toProto(handshake).toByteArray))
+      isHandshakeSent = true
       logger.info(s"Sent initial handshake to $remoteAddress.")
-      if (receivedHandshake.isDefined) {
+      if (receivedHandshake.isDefined && isHandshakeSent) {
         logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
         timeout.foreach(_.cancel())
+        context.parent ! ConnectionSetupSuccessfully
         context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)))
       } else context.become(awaitingConnectionBehaviour(
-        isHandshakeSent = true,
-        None,
         Some(context.system.scheduler.scheduleOnce(settings.network.handshakeTimeout, self, HandshakeTimeout)))
       )
     }
@@ -74,12 +77,14 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       case Success(value) => value match {
         case handshake: Handshake =>
           logger.info(s"Got a Handshake from $remoteAddress.")
+          receivedHandshake = Some(handshake)
           listener ! ResumeReading
-          if (isHandshakeSent) {
+          if (isHandshakeSent && receivedHandshake.isDefined) {
             logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
             timeout.foreach(_.cancel())
+            context.parent ! ConnectionSetupSuccessfully
             context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, handshake)))
-          } else context.become(awaitingConnectionBehaviour(isHandshakeSent, Some(handshake), timeout))
+          } else context.become(awaitingConnectionBehaviour(timeout))
 
         case message => logger.info(s"Expecting handshake, but received ${message.messageName}.")
       }
@@ -90,7 +95,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
     case _ =>
   }
 
-  override def receive: Receive = awaitingConnectionBehaviour(isHandshakeSent = false, None, None)
+  override def receive: Receive = awaitingConnectionBehaviour(None)
 
   def defaultLogic: Receive = {
     case cc: ConnectionClosed =>

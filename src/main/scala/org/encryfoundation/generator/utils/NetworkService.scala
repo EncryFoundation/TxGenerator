@@ -12,10 +12,9 @@ import org.encryfoundation.common.transaction.PubKeyLockedContract
 import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.GeneratorApp._
 import org.encryfoundation.generator.modifiers.box.Box
-
 import scala.concurrent.Future
 
-object NetworkService extends StrictLogging{
+object NetworkService extends StrictLogging {
 
   def commitTransaction(node: Node, tx: Transaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(

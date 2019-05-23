@@ -9,8 +9,6 @@ import org.encryfoundation.generator.modifiers.box.AssetBox
 import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
 import com.google.common.base.Charsets
 import com.google.common.hash.{BloomFilter, Funnels}
-import org.encryfoundation.generator.utils.NetworkService.logger
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
