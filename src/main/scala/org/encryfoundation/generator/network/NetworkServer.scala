@@ -77,7 +77,7 @@ class NetworkServer(settings: Settings,
       val inv: BasicMessagesRepo.NetworkMessage =
         InvNetworkMessage(ModifierTypeId @@ Transaction.modifierTypeId -> Seq(ModifierId @@ tx.id))
       tmpConnectionHandler.foreach(_ ! inv)
-      logger.info(s"Send inv message to remote.")
+      logger.debug(s"Send inv message to remote.")
 
     case msg@TransactionForCommit(_) => messagesHandler ! msg
 
