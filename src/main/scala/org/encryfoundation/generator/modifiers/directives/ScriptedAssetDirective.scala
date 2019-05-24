@@ -1,7 +1,11 @@
-package org.encryfoundation.generator.transaction.directives
+package org.encryfoundation.generator.modifiers.directives
+
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage.{ADKeyProto, ScriptedAssetDirectiveProtoMessage}
 
 import scala.util.Try
 import com.google.common.primitives.{Bytes, Ints, Longs}
+import com.google.protobuf.ByteString
 import org.encryfoundation.common.serialization.Serializer
 import org.encryfoundation.common.{Algos, Constants}
 import org.encryfoundation.common.utils.Utils
@@ -10,7 +14,7 @@ import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
 import scorex.crypto.hash.Digest32
-import org.encryfoundation.generator.transaction.box.{AssetBox, Box, EncryProposition}
+import org.encryfoundation.generator.modifiers.box.{AssetBox, Box, EncryProposition}
 
 case class ScriptedAssetDirective(contractHash: ContractHash,
                                   amount: Long,
@@ -29,6 +33,9 @@ case class ScriptedAssetDirective(contractHash: ContractHash,
   override def serializer: Serializer[M] = ScriptedAssetDirectiveSerializer
 
   lazy val isIntrinsic: Boolean          = tokenIdOpt.isEmpty
+
+  override def toDirectiveProto: DirectiveProtoMessage = ScriptedAssetDirectiveProtoSerializer.toProto(this)
+
 }
 
 object ScriptedAssetDirective {
@@ -47,6 +54,30 @@ object ScriptedAssetDirective {
     amount <- c.downField("amount").as[Long]
     tokenIdOpt <- c.downField("tokenId").as[Option[ADKey]](Decoder.decodeOption(Decoder.decodeString.emapTry(Algos.decode).map(ADKey @@ _)))
   } yield ScriptedAssetDirective(contractHash, amount, tokenIdOpt)
+}
+
+object ScriptedAssetDirectiveProtoSerializer extends ProtoDirectiveSerializer[ScriptedAssetDirective] {
+
+  override def toProto(message: ScriptedAssetDirective): DirectiveProtoMessage ={
+    val initialDirective: ScriptedAssetDirectiveProtoMessage = ScriptedAssetDirectiveProtoMessage()
+      .withContractHash(ByteString.copyFrom(message.contractHash))
+      .withAmount(message.amount)
+    val saDirective: ScriptedAssetDirectiveProtoMessage = message.tokenIdOpt match {
+      case Some(value) => initialDirective.withTokenIdOpt( ADKeyProto().withTokenIdOpt(ByteString.copyFrom(value)))
+      case None => initialDirective
+    }
+    DirectiveProtoMessage().withScriptedAssetDirectiveProto(saDirective)
+  }
+
+  override def fromProto(message: DirectiveProtoMessage): Option[ScriptedAssetDirective] =
+    message.directiveProto.scriptedAssetDirectiveProto match {
+      case Some(value) => Some(ScriptedAssetDirective(
+        value.contractHash.toByteArray,
+        value.amount,
+        value.tokenIdOpt.map(x => ADKey @@ x.tokenIdOpt.toByteArray))
+      )
+      case None => Option.empty[ScriptedAssetDirective]
+    }
 }
 
 object ScriptedAssetDirectiveSerializer extends Serializer[ScriptedAssetDirective] {

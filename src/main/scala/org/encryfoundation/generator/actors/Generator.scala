@@ -6,10 +6,11 @@ import org.encryfoundation.common.Algos
 import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.PubKeyLockedContract
 import org.encryfoundation.generator.actors.BoxesHolder._
-import org.encryfoundation.generator.transaction.{EncryTransaction, Transaction}
-import org.encryfoundation.generator.transaction.box.AssetBox
+import org.encryfoundation.generator.actors.Generator.TransactionForCommit
+import org.encryfoundation.generator.modifiers.{Transaction, TransactionsFactory}
+import org.encryfoundation.generator.modifiers.box.AssetBox
 import scala.concurrent.ExecutionContext.Implicits.global
-import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
+import org.encryfoundation.generator.utils.{Node, Settings}
 import scorex.utils
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -17,7 +18,8 @@ import scala.concurrent.duration._
 class Generator(settings: Settings,
                 privKey: PrivateKey25519,
                 nodeForLocalPrivKey: Node,
-                influx: Option[ActorRef]) extends Actor with StrictLogging {
+                influx: Option[ActorRef],
+                networkServer: ActorRef) extends Actor with StrictLogging {
 
   val boxesHolder: ActorRef = context.system.actorOf(
       BoxesHolder.props(settings, influx, nodeForLocalPrivKey), s"boxesHolder${nodeForLocalPrivKey.explorerHost}")
@@ -33,8 +35,8 @@ class Generator(settings: Settings,
   }
 
   def generateAndSendTransaction(boxes: List[AssetBox], txsType: Int): Future[Unit] = Future {
-    val transaction: EncryTransaction = txsType match {
-      case 1 => Transaction.dataTransactionScratch(
+    val transaction: Transaction = txsType match {
+      case 1 => TransactionsFactory.dataTransactionScratch(
         privKey,
         settings.transactions.feeAmount,
         System.currentTimeMillis(),
@@ -44,7 +46,7 @@ class Generator(settings: Settings,
         utils.Random.randomBytes(settings.transactions.dataTxSize),
         settings.transactions.numberOfCreatedDirectives
       )
-      case 2 => Transaction.defaultPaymentTransaction(
+      case 2 => TransactionsFactory.defaultPaymentTransaction(
         privKey,
         settings.transactions.feeAmount,
         System.currentTimeMillis(),
@@ -58,11 +60,18 @@ class Generator(settings: Settings,
       case 1 => "DataTx"
       case 2 => "MonetaryTx"
     }}")
-    settings.peers.foreach(NetworkService.commitTransaction(_, transaction))
+    networkServer ! TransactionForCommit(transaction)
   }
 }
 
 object Generator {
-  def props(settings: Settings, privKey: PrivateKey25519, nodeForLocalPrivKey: Node, influx: Option[ActorRef]): Props =
-    Props(new Generator(settings, privKey, nodeForLocalPrivKey, influx))
+
+  case class TransactionForCommit(tx: Transaction)
+
+  def props(settings: Settings,
+            privKey: PrivateKey25519,
+            nodeForLocalPrivKey: Node,
+            influx: Option[ActorRef],
+            networkServer: ActorRef): Props =
+    Props(new Generator(settings, privKey, nodeForLocalPrivKey, influx, networkServer))
 }

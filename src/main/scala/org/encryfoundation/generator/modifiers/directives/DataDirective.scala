@@ -1,15 +1,19 @@
-package org.encryfoundation.generator.transaction.directives
+package org.encryfoundation.generator.modifiers.directives
 
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage
+import TransactionProto.TransactionProtoMessage.DirectiveProtoMessage.DataDirectiveProtoMessage
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
 import com.google.common.primitives.{Bytes, Ints}
+import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.serialization.Serializer
 import org.encryfoundation.common.utils.Utils
 import org.encryfoundation.common.{Algos, Constants}
 import scorex.crypto.hash.Digest32
-import org.encryfoundation.generator.transaction.box.{DataBox, EncryProposition}
-import org.encryfoundation.generator.transaction.directives.Directive.DTypeId
+import org.encryfoundation.generator.modifiers.box.{DataBox, EncryProposition}
+import org.encryfoundation.generator.modifiers.directives.Directive.DTypeId
+
 import scala.util.Try
 
 case class DataDirective(contractHash: ContractHash, data: Array[Byte]) extends Directive {
@@ -27,6 +31,8 @@ case class DataDirective(contractHash: ContractHash, data: Array[Byte]) extends 
   override lazy val isValid: Boolean     = data.length <= MaxDataLength
 
   override def serializer: Serializer[M] = DataDirectiveSerializer
+
+  override def toDirectiveProto: DirectiveProtoMessage = DataDirectiveProtoSerializer.toProto(this)
 
 }
 
@@ -48,6 +54,21 @@ object DataDirective {
       .flatMap(ch => Algos.decode(dataEnc).map(data =>  DataDirective(ch, data)))
       .getOrElse(throw new Exception("Decoding failed"))
   }
+}
+
+
+object DataDirectiveProtoSerializer extends ProtoDirectiveSerializer[DataDirective] {
+
+  override def toProto(message: DataDirective): DirectiveProtoMessage = DirectiveProtoMessage()
+    .withDataDirectiveProto(DataDirectiveProtoMessage()
+      .withContractHash(ByteString.copyFrom(message.contractHash))
+      .withData(ByteString.copyFrom(message.data)))
+
+  override def fromProto(message: DirectiveProtoMessage): Option[DataDirective] =
+    message.directiveProto.dataDirectiveProto match {
+      case Some(value) => Some(DataDirective(value.contractHash.toByteArray, value.data.toByteArray))
+      case None => Option.empty[DataDirective]
+    }
 }
 
 object DataDirectiveSerializer extends Serializer[DataDirective] {

@@ -1,4 +1,4 @@
-package org.encryfoundation.generator.transaction.box
+package org.encryfoundation.generator.modifiers.box
 
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.utils.TaggedTypes.ADKey

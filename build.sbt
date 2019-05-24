@@ -1,18 +1,18 @@
 name         := "TransactionsGenerator"
-version      := "0.8.2"
-organization := "org.encry"
+version      := "0.8.3"
+organization := "org.encryFoundation"
+
+val logbackVersion  = "1.2.3"
+val catsVersion     = "1.0.1"
+val akkaHttpVersion = "10.0.9"
+val akkaVersion     = "2.5.13"
 
 scalaVersion := "2.12.6"
 
-val akkaVersion     = "2.5.13"
-val akkaHttpVersion = "10.0.9"
-val logbackVersion  = "1.2.3"
-val catsVersion     = "1.0.1"
-
 val loggingDependencies = Seq(
-  "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.0",
-  "ch.qos.logback"             % "logback-classic"  % logbackVersion,
-  "ch.qos.logback"             % "logback-core"     % logbackVersion
+  "com.typesafe.scala-logging" %% "scala-logging"  % "3.9.0",
+  "ch.qos.logback"             % "logback-classic" % logbackVersion,
+  "ch.qos.logback"             % "logback-core"    % logbackVersion
 )
 
 val testingDependencies = Seq(
@@ -33,7 +33,9 @@ libraryDependencies ++= Seq(
   "org.typelevel"        % "cats-core_2.12"   % "1.0.1",
   "org.typelevel"        % "cats-kernel_2.12" % "1.0.1",
   "org.typelevel"        % "cats-macros_2.12" % "1.0.1",
-  "com.google.guava"     % "guava"             % "27.1-jre"
+  "com.google.guava"     % "guava"            % "27.1-jre",
+  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
+  "commons-net"          % "commons-net"      % "3.3"
 ) ++ loggingDependencies ++ testingDependencies
 
 scalacOptions += "-Ypartial-unification"
@@ -45,4 +47,8 @@ resolvers ++= Seq(
   "SonaType" at "https://oss.sonatype.org/content/groups/public",
   "Typesafe maven releases" at "http://repo.typesafe.com/typesafe/maven-releases/",
   "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
+)
+
+PB.targets in Compile := Seq(
+  scalapb.gen() -> (sourceManaged in Compile).value / "protobuf"
 )

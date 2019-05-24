@@ -1,11 +1,10 @@
-package org.encryfoundation.generator.transaction.box
+package org.encryfoundation.generator.modifiers.box
 
 import com.google.common.primitives.{Bytes, Longs, Shorts}
-import io.circe.Encoder
+import io.circe.{Decoder, Encoder, HCursor}
 import io.circe.syntax._
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.serialization.Serializer
-
 import scala.util.Try
 
 /** Stores arbitrary data in EncryTL binary format. */
@@ -27,6 +26,18 @@ object DataBox {
     "nonce"       -> bx.nonce.asJson,
     "data"        -> Algos.encode(bx.data).asJson,
   ).asJson
+
+  implicit val jsonDecoder: Decoder[DataBox] = (c: HCursor) => {
+    for {
+      proposition <- c.downField("proposition").as[EncryProposition]
+      nonce       <- c.downField("nonce").as[Long]
+      data        <- c.downField("data").as[String]
+    } yield DataBox(
+      proposition,
+      nonce,
+      Algos.decode(data).getOrElse(Array.emptyByteArray)
+    )
+  }
 }
 
 object DataBoxSerializer extends Serializer[DataBox] {
