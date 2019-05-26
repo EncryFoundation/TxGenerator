@@ -131,7 +131,10 @@ class Generator(settings: Settings,
       blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
       multisigBoxes = multisigBoxes.updated(Algos.encode(transaction.id), transaction.newBoxes)
     }
-    if (txsType == 4) multisigBoxes = multisigBoxes - Algos.encode(transaction.id)
+    if (txsType == 4) {
+      blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
+      multisigBoxes = multisigBoxes - Algos.encode(transaction.id)
+    }
 
     logger.info(s"Commit tx ${Algos.encode(transaction.id)} with type: ${txsType match {
       case 1 => "DataTx"
