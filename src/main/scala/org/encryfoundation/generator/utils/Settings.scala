@@ -1,6 +1,5 @@
 package org.encryfoundation.generator.utils
 
-import java.net.InetSocketAddress
 import scala.concurrent.duration.FiniteDuration
 
 case class Settings(peers: List[Node],
@@ -9,13 +8,11 @@ case class Settings(peers: List[Node],
                     boxesHolderSettings: BoxesHolderSettings,
                     transactions: TransactionsSettings,
                     network: NetworkSettings,
-                    ntp: NetworkTimeProviderSettings)
+                    ntp: NetworkTimeProviderSettings,
                     multisig: MultisigSettings)
 
 case class Node(explorerHost: String,
                 explorerPort: Int,
-                nodeHost: String,
-                nodePort: Int,
                 mnemonicKey: String)
 
 case class InfluxDBSettings(url: String,

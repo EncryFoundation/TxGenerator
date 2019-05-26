@@ -9,6 +9,8 @@ import org.encryfoundation.generator.modifiers.directives.{Directive, DirectiveP
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
+import org.encryfoundation.prismlang.core.Types
+import org.encryfoundation.prismlang.core.wrapped.{PObject, PValue}
 
 import scala.util.Try
 
@@ -18,10 +20,18 @@ case class Transaction(fee: Long,
                        directives: IndexedSeq[Directive],
                        defaultProofOpt: Option[Proof]) {
 
-  val messageToSign: Array[Byte] = UnsignedTransaction.bytesToSign(fee, timestamp, inputs, directives)
+  val messageToSign: Array[Byte] = UnsignedEncryTransaction.bytesToSign(fee, timestamp, inputs, directives)
   lazy val id: Array[Byte]       = Blake2b256.hash(messageToSign)
   lazy val newBoxes: IndexedSeq[Box] =
     directives.zipWithIndex.flatMap { case (d, idx) => d.boxes(Digest32 !@@ id, idx) }
+
+  val tpe: Types.Product = Types.EncryTransaction
+
+  def asVal: PValue = PValue(PObject(Map(
+    "inputs"        -> PValue(inputs.map(_.boxId.toList), Types.PCollection(Types.PCollection.ofByte)),
+    "outputs"       -> PValue(newBoxes.map(_.asPrism), Types.PCollection(Types.EncryBox)),
+    "messageToSign" -> PValue(messageToSign, Types.PCollection.ofByte)
+  ), tpe), tpe)
 }
 
 object Transaction {

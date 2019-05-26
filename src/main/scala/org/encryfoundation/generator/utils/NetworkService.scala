@@ -18,12 +18,12 @@ import scala.util.control.NonFatal
 
 object NetworkService extends StrictLogging {
 
-  def commitTransaction(node: Node, tx: Transaction): Future[HttpResponse] =
+  def commitTransaction(node: NetworkSettings, tx: Transaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = "/transactions/send",
       entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
-    ).withEffectiveUri(securedConnection = false, Host(node.nodeHost, node.nodePort)))
+    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionPort)))
       .recoverWith {
         case NonFatal(th) =>
           th.printStackTrace()
@@ -43,11 +43,11 @@ object NetworkService extends StrictLogging {
       .flatMap(_.fold(Future.failed, Future.successful))
   }
 
-  def checkTxsInBlockchain(node: Node, txsToCheck: Vector[String], numberOfBlocks: Int): Future[List[String]] =
+  def checkTxsInBlockchain(node: NetworkSettings, txsToCheck: Vector[String], numberOfBlocks: Int): Future[List[String]] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.GET,
       uri = s"/history/lastHeaders/$numberOfBlocks"
-    ).withEffectiveUri(securedConnection = false, Host(node.nodeHost, node.nodePort)))
+    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionPort)))
       .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
       .map(_.utf8String)
       .map(decode[List[HeaderId]])
@@ -62,11 +62,11 @@ object NetworkService extends StrictLogging {
         case NonFatal(_) => List.empty
       }
 
-  private def checkTxsInBlock(node: Node, txsToCheck: Vector[String], headerId: HeaderId): Future[List[String]] =
+  private def checkTxsInBlock(node: NetworkSettings, txsToCheck: Vector[String], headerId: HeaderId): Future[List[String]] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.GET,
       uri = s"/history/${headerId.id}/transactions"
-    ).withEffectiveUri(securedConnection = false, Host(node.nodeHost, node.nodePort)))
+    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionPort)))
       .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
       .map(_.utf8String)
       .map(decode[List[TransactionId]])

@@ -7,22 +7,19 @@ import org.encryfoundation.common.crypto.PrivateKey25519
 import org.encryfoundation.common.transaction.{Proof, PubKeyLockedContract}
 import org.encryfoundation.generator.actors.BlockchainListener.{CheckTxMined, MultisigTxsInBlockchain}
 import org.encryfoundation.generator.actors.BoxesHolder._
-import org.encryfoundation.generator.transaction.{Contracts, EncryTransaction, Transaction}
-import org.encryfoundation.generator.transaction.box.{AssetBox, Box, MonetaryBox}
-
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
+import org.encryfoundation.generator.modifiers.box.{AssetBox, Box, MonetaryBox}
 import org.encryfoundation.generator.modifiers.{Transaction, TransactionsFactory}
-import org.encryfoundation.generator.modifiers.box.AssetBox
-import scala.concurrent.ExecutionContext.Implicits.global
-import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
+import org.encryfoundation.generator.transaction.Contracts
+import org.encryfoundation.generator.utils.{Node, Settings}
 import org.encryfoundation.prismlang.compiler.CompiledContract
 import org.encryfoundation.prismlang.core.wrapped.BoxedValue.MultiSignatureValue
 import scorex.crypto.hash.Blake2b256
 import scorex.crypto.signatures.{Curve25519, PrivateKey, PublicKey}
-import org.encryfoundation.generator.utils.{Node, Settings}
 import scorex.utils
 import scorex.utils.Random.{randomBytes => rBytes}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Random
@@ -58,7 +55,7 @@ class Generator(settings: Settings,
     case _ =>
   }
 
-  def generateAndSendTransaction(boxes: List[AssetBox], txsType: Int): Future[Unit] = Future {
+  def generateAndSendTransaction(boxes: List[AssetBox], txsType: Int, forTx: Option[String] = None): Future[Unit] = Future {
     val transaction: Transaction = txsType match {
       case 1 => TransactionsFactory.dataTransactionScratch(
         privKey,
@@ -82,7 +79,7 @@ class Generator(settings: Settings,
       case 3 =>
         val contract = Contracts.multiSigContractScratch(multisigKeys.map(_.publicKeyBytes)).get
 
-        Transaction.scriptedAssetTransactionScratch(
+        TransactionsFactory.scriptedAssetTransactionScratch(
           privKey,
           settings.transactions.feeAmount,
           System.currentTimeMillis(),
@@ -95,7 +92,7 @@ class Generator(settings: Settings,
       case 4 if forTx.isDefined =>
         val compiledContract: CompiledContract = Contracts.multiSigContractScratch(multisigKeys.map(_.publicKeyBytes)).get
         val ts: Long = System.currentTimeMillis()
-        val txWithoutProofs: EncryTransaction = Transaction.defaultPaymentTransactionWithoutRandom(
+        val txWithoutProofs: Transaction = TransactionsFactory.defaultPaymentTransactionWithoutRandom(
           privKey,
           settings.transactions.feeAmount,
           ts,
@@ -115,7 +112,7 @@ class Generator(settings: Settings,
           .toList
 
         val proofs: Seq[Proof] = Seq(Proof(MultiSignatureValue(signatures), Some("signature")))
-        Transaction.defaultPaymentTransactionWithoutRandom(
+        TransactionsFactory.defaultPaymentTransactionWithoutRandom(
           privKey,
           settings.transactions.feeAmount,
           ts,

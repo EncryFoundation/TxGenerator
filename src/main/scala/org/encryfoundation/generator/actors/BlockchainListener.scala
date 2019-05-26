@@ -22,14 +22,12 @@ class BlockchainListener(settings: Settings) extends Actor with StrictLogging {
   def operating(txsToCheck: Vector[String]): Receive = {
     case CheckTxMined(id) => context.become(operating(txsToCheck :+ id))
     case TimeToCheck if txsToCheck.nonEmpty =>
-      Future
-        .sequence(settings.peers.map(NetworkService.checkTxsInBlockchain(_, txsToCheck, settings.multisig.numberOfBlocksToCheck)))
-        .map(_.flatten.toSet)
+      NetworkService.checkTxsInBlockchain(settings.network, txsToCheck, settings.multisig.numberOfBlocksToCheck)
         .foreach { txs =>
           if (txs.nonEmpty) {
             logger.info(s"Multisig txs ${txs.mkString(", ")} are in blockchain now")
-            context.parent ! MultisigTxsInBlockchain(txs)
-            self ! MultisigTxsInBlockchain(txs)
+            context.parent ! MultisigTxsInBlockchain(txs.toSet)
+            self ! MultisigTxsInBlockchain(txs.toSet)
           }
         }
     case TimeToCheck =>
