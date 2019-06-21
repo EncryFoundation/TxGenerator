@@ -48,7 +48,9 @@ class PeerHandler(remoteAddress: InetSocketAddress,
     case StartIteration => timeProvider.time() map { time =>
       val handshake: Handshake = Handshake(
         protocolToBytes(settings.network.appVersion),
-        settings.network.nodeName, None, time
+        settings.network.nodeName,
+        Some(new InetSocketAddress(settings.network.declaredAddressHost, settings.network.declaredAddressPort)),
+        time
       )
       listener ! Write(ByteString(GeneralizedNetworkMessage.toProto(handshake).toByteArray))
       isHandshakeSent = true
@@ -141,7 +143,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
         GeneralizedNetworkMessage.fromProto(packet) match {
           case Success(message) =>
             receivedMessagesHandler ! MessageFromNetwork(message, Some(cp))
-            logger.info("Received message " + message.messageName + " from " + remoteAddress)
+            logger.debug("Received message " + message.messageName + " from " + remoteAddress)
             false
           case Failure(e) =>
             logger.info(s"Corrupted data from: " + remoteAddress + s"$e")
@@ -172,7 +174,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       outMessagesBuffer -= id
       if (outMessagesBuffer.nonEmpty) writeFirst()
       else {
-        logger.info("Buffered messages processed, exiting buffering mode")
+        logger.debug("Buffered messages processed, exiting buffering mode")
         context.become(workingCycleWriting(cp))
       }
   }

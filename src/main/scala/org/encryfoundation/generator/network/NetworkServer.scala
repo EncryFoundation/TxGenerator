@@ -47,11 +47,11 @@ class NetworkServer(settings: Settings,
       logger.info(s"Local app was successfully bound to $localAddress!")
       context.system.scheduler.schedule(5.seconds, 30.seconds, self, CheckConnection)
 
-    case CommandFailed(_: Bind) =>
-      logger.info(s"Failed to bind to $selfPeer.")
+    case CommandFailed(add: Bind) =>
+      logger.info(s"Failed to bind to ${add.localAddress}.")
       context.stop(self)
 
-    case Connected(remote, _) =>
+    case Connected(remote, _) if !isConnected && remote.getAddress == connectingPeer.getAddress =>
       val handler: ActorRef = context.actorOf(
         PeerHandler.props(remote, sender(), settings, timeProvider, Outgoing, messagesHandler)
       )
@@ -60,6 +60,8 @@ class NetworkServer(settings: Settings,
       tmpConnectionHandler = Some(handler)
       sender ! Register(handler)
       sender ! ResumeReading
+
+    case Connected(remote, _) => logger.info(s"Remote: $remote try to connect but isConnected: $isConnected.")
 
     case CommandFailed(c: Connect) =>
       isConnected = false

@@ -1,13 +1,17 @@
 language: scala
 sudo: false
+branches:
+  only:
+    - master
+    - /^\d\.\d+$/
 jdk:
-- oraclejdk8
+  -openjdk9
 scala:
-- 2.12.6
+  - 2.12.6
 script:
-- sbt test
+  - sbt test
 cache:
   directories:
-  - $HOME/.sbt
+    - $HOME/.sbt
 before_cache:
-- find $HOME/.sbt        -name "*.lock"               -print -delete
+  - find $HOME/.sbt        -name "*.lock"               -print -delete

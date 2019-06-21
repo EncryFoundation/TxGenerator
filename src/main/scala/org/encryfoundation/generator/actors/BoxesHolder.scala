@@ -102,7 +102,7 @@ class BoxesHolder(settings: Settings,
   def cleanReceivedBoxesFromUsed(usedB: Map[String, Cancellable],
                                  newB: List[AssetBox]): (List[AssetBox], Map[String, Cancellable]) = {
     val newBMap: Map[String, AssetBox] = Map(newB.map(k => Algos.encode(k.id) -> k): _*)
-    logger.info(s"cleanReceivedBoxesFromUsed: New boxes map size is: ${newBMap.size}")
+    logger.debug(s"cleanReceivedBoxesFromUsed: New boxes map size is: ${newBMap.size}")
     val (usedBoxes: Map[String, Cancellable], newBoxes: Map[String, AssetBox]) =
       usedB.foldLeft(Map[String, Cancellable](), newBMap) {
         case ((newUsedCollection, newBoxesCollection), (id, timer)) => newBoxesCollection.get(id) match {
@@ -112,18 +112,18 @@ class BoxesHolder(settings: Settings,
             (newUsedCollection, newBoxesCollection)
         }
       }
-    logger.info(s"CleanNewBoxesFromUsed: Used - ${usedBoxes.size}. New - ${newBoxes.size}")
+    logger.debug(s"CleanNewBoxesFromUsed: Used - ${usedBoxes.size}. New - ${newBoxes.size}")
     (newBoxes.values.toList, usedBoxes)
   }
 
   def getBoxes(from: Int, to: Int): Future[Unit] =
     NetworkService.requestUtxos(peer, from, to).map { request =>
-      logger.info(s"Boxes from API: ${request.size}")
+      logger.debug(s"Boxes from API: ${request.size}")
       if (request.nonEmpty && to < settings.boxesHolderSettings.maxPoolSize) {
         val newFrom: Int = from + settings.boxesHolderSettings.rangeForAskingBoxes
         val newTo: Int = to + settings.boxesHolderSettings.rangeForAskingBoxes
         getBoxes(newFrom, newTo)
-        logger.info(s"Asking new boxes in range: $newFrom -> $newTo.")
+        logger.debug(s"Asking new boxes in range: $newFrom -> $newTo.")
       }
       request.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty && !bloomFilter.mightContain(Algos.encode(mb.id)) =>
         bloomFilter.put(Algos.encode(mb.id))
