@@ -6,29 +6,15 @@ import akka.http.scaladsl.model.headers.Host
 import akka.util.ByteString
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.{Decoder, HCursor}
-import io.circe.syntax._
 import io.circe.parser.decode
 import org.encryfoundation.common.Algos
 import org.encryfoundation.common.transaction.PubKeyLockedContract
-import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.GeneratorApp._
 import org.encryfoundation.generator.modifiers.box.Box
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 object NetworkService extends StrictLogging {
-
-  def commitTransaction(node: NetworkSettings, tx: Transaction): Future[HttpResponse] =
-    Http().singleRequest(HttpRequest(
-      method = HttpMethods.POST,
-      uri = "/transactions/send",
-      entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
-    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionPort)))
-      .recoverWith {
-        case NonFatal(th) =>
-          th.printStackTrace()
-          Future.failed(th)
-      }
 
   def requestUtxos(node: Node, from: Int, to: Int): Future[List[Box]] = {
     val privKey = Mnemonic.createPrivKey(Option(node.mnemonicKey))
@@ -47,7 +33,7 @@ object NetworkService extends StrictLogging {
     Http().singleRequest(HttpRequest(
       method = HttpMethods.GET,
       uri = s"/history/lastHeaders/$numberOfBlocks"
-    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionPort)))
+    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionApiPort)))
       .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
       .map(_.utf8String)
       .map(decode[List[HeaderId]])
@@ -66,7 +52,7 @@ object NetworkService extends StrictLogging {
     Http().singleRequest(HttpRequest(
       method = HttpMethods.GET,
       uri = s"/history/${headerId.id}/transactions"
-    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionPort)))
+    ).withEffectiveUri(securedConnection = false, Host(node.peerForConnectionHost, node.peerForConnectionApiPort)))
       .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
       .map(_.utf8String)
       .map(decode[List[TransactionId]])

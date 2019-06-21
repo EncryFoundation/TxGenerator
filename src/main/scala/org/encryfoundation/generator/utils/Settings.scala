@@ -47,4 +47,5 @@ case class NetworkSettings(syncPacketLength: Int,
                            appVersion: String,
                            handshakeTimeout: FiniteDuration,
                            peerForConnectionHost: String,
-                           peerForConnectionPort: Int)
+                           peerForConnectionPort: Int,
+                           peerForConnectionApiPort: Int)
