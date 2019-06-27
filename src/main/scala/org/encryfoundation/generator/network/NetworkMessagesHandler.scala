@@ -2,15 +2,15 @@ package org.encryfoundation.generator.network
 
 import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.common.Algos
+import org.encryfoundation.common.network.BasicMessagesRepo.{ModifiersNetworkMessage, RequestModifiersNetworkMessage}
+import org.encryfoundation.common.utils.Algos
+import org.encryfoundation.common.utils.TaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
-import org.encryfoundation.generator.network.BasicMessagesRepo._
 import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInvForTx
 import org.encryfoundation.generator.modifiers.{Transaction, TransactionProtoSerializer}
-import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
-import org.encryfoundation.generator.utils.{CoreTaggedTypes, Settings}
+import org.encryfoundation.generator.network.BasicMessagesRepo.MessageFromNetwork
+import org.encryfoundation.generator.utils.Settings
 import supertagged.@@
-
 class NetworkMessagesHandler(settings: Settings) extends Actor with StrictLogging {
 
   var localGeneratedTransactions: Seq[Transaction] = Seq.empty
@@ -25,7 +25,7 @@ class NetworkMessagesHandler(settings: Settings) extends Actor with StrictLoggin
         logger.info(s"Got request modifiers on NMH")
         val tmpInv: Seq[String] = invData._2.map(Algos.encode)
         val transactions: Seq[Transaction] = localGeneratedTransactions.filter(tx => tmpInv.contains(Algos.encode(tx.id)))
-        val forSend: Map[Array[Byte] @@ CoreTaggedTypes.ModifierId.Tag, Array[Byte]] = transactions.map { tx =>
+        val forSend: Map[Array[Byte] @@ ModifierId.Tag, Array[Byte]] = transactions.map { tx =>
           ModifierId @@ tx.id -> TransactionProtoSerializer.toProto(tx).toByteArray
         }.toMap
         sender() ! ModifiersNetworkMessage(ModifierTypeId @@ Transaction.modifierTypeId -> forSend)

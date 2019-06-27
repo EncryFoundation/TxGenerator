@@ -2,19 +2,21 @@ package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.SupervisorStrategy.Restart
+import akka.actor.{Actor, ActorRef, ActorSystem, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.io.Tcp.SO.KeepAlive
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import com.typesafe.scalalogging.StrictLogging
+import org.encryfoundation.common.network.BasicMessagesRepo.{InvNetworkMessage, NetworkMessage}
+import org.encryfoundation.common.utils.TaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.actors.Generator
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
-import org.encryfoundation.generator.network.BasicMessagesRepo.{InvNetworkMessage, Outgoing}
+import org.encryfoundation.generator.network.BasicMessagesRepo.Outgoing
 import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInvForTx
-import org.encryfoundation.generator.network.NetworkServer.{CheckConnection, ConnectionSetupSuccessfully}
+import org.encryfoundation.generator.network.NetworkServer.{ConnectionSetupSuccessfully, RequestPeerForConnection}
 import org.encryfoundation.generator.network.PeerHandler._
 import org.encryfoundation.generator.modifiers.Transaction
-import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.utils.Mnemonic.createPrivKey
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
 
@@ -28,11 +30,7 @@ class NetworkServer(settings: Settings,
   implicit val system: ActorSystem = context.system
   implicit val ec: ExecutionContextExecutor = context.dispatcher
 
-  var isConnected = false
-
   val messagesHandler: ActorRef = context.actorOf(NetworkMessagesHandler.props(settings))
-
-  var tmpConnectionHandler: Option[ActorRef] = None
 
   val selfPeer: InetSocketAddress =
     new InetSocketAddress(settings.network.bindAddressHost, settings.network.bindAddressPort)
@@ -40,38 +38,52 @@ class NetworkServer(settings: Settings,
   val connectingPeer: InetSocketAddress =
     new InetSocketAddress(settings.network.peerForConnectionHost, settings.network.peerForConnectionPort)
 
-  IO(Tcp) ! Bind(self, selfPeer)
+  IO(Tcp) ! Bind(self, selfPeer, options = KeepAlive(true) :: Nil, pullMode = false)
 
-  override def receive: Receive = {
-    case Bound(localAddress) =>
-      logger.info(s"Local app was successfully bound to $localAddress!")
-      context.system.scheduler.schedule(5.seconds, 30.seconds, self, CheckConnection)
+  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy(
+    maxNrOfRetries = 5, withinTimeRange = 60.seconds
+  ) { case _ => Restart }
 
-    case CommandFailed(_: Bind) =>
-      logger.info(s"Failed to bind to $selfPeer.")
+  override def receive: Receive = bindLogic
+
+  def bindLogic: Receive = {
+    case Bound(address) =>
+      logger.info(s"Local app was successfully bound to $address!")
+      context.system.scheduler.scheduleOnce(5.seconds, self, RequestPeerForConnection)
+      context.become(connectionWithPeerLogic)
+
+    case CommandFailed(add: Bind) =>
+      logger.info(s"Failed to bind to ${add.localAddress} cause of: ${add.failureMessage.cause}. Stopping network actor.")
       context.stop(self)
+  }
 
-    case Connected(remote, _) =>
-      val handler: ActorRef = context.actorOf(
-        PeerHandler.props(remote, sender(), settings, timeProvider, Outgoing, messagesHandler)
+  def connectionWithPeerLogic: Receive = {
+    case RequestPeerForConnection =>
+      logger.info(s"Sending connect message to $connectingPeer.")
+      IO(Tcp) ! Connect(
+        connectingPeer,
+        options = KeepAlive(true) :: Nil,
+        timeout = Some(5.seconds)
       )
-      logger.info(s"Successfully connected to $remote. Creating handler: $handler.")
-      isConnected = true
-      tmpConnectionHandler = Some(handler)
-      sender ! Register(handler)
-      sender ! ResumeReading
+
+    case Connected(remote, _) if remote.getAddress == connectingPeer.getAddress =>
+      logger.info(s"Got Connected message from $remote. Trying to send handshake message.")
+      context.actorOf(PeerHandler.props(remote, selfPeer, sender(), settings, timeProvider, messagesHandler))
 
     case CommandFailed(c: Connect) =>
-      isConnected = false
-      tmpConnectionHandler = None
       logger.info(s"Failed to connect to: ${c.remoteAddress}")
+      context.system.scheduler.scheduleOnce(5.seconds, self, RequestPeerForConnection)
 
-    case CheckConnection if !isConnected =>
-      IO(Tcp) ! Connect(connectingPeer, options = KeepAlive(true) :: Nil, timeout = Some(5.seconds))
-      logger.info(s"Trying to connect to $connectingPeer.")
+    case HandshakeDone(address) =>
+      logger.info(s"Handshake process done. Starting business logic..")
+      context.become(businessLogic)
 
-    case CheckConnection =>
-      logger.info(s"Triggered CheckConnection. Current connection is: $isConnected")
+    case ConnectionRefused =>
+      logger.info(s"Handshake timeout.. Starting awaiting process again...")
+      context.system.scheduler.scheduleOnce(5.seconds, self, RequestPeerForConnection)
+  }
+
+  def businessLogic: Receive = {
 
     case RemovePeerFromConnectionList(peer) =>
       isConnected = false
@@ -79,7 +91,7 @@ class NetworkServer(settings: Settings,
       logger.info(s"Disconnected from $peer.")
 
     case BroadcastInvForTx(tx) =>
-      val inv: BasicMessagesRepo.NetworkMessage =
+      val inv: NetworkMessage =
         InvNetworkMessage(ModifierTypeId @@ Transaction.modifierTypeId -> Seq(ModifierId @@ tx.id))
       tmpConnectionHandler.foreach(_ ! inv)
       logger.debug(s"Send inv message to remote.")
@@ -95,11 +107,16 @@ class NetworkServer(settings: Settings,
 
     case msg => logger.info(s"Got strange message on NetworkServer: $msg.")
   }
+
+  def errorHandler: Receive = {
+    case _ =>
+  }
 }
 
 object NetworkServer {
 
-  case object CheckConnection
+  case object RequestPeerForConnection
+
 
   case object ConnectionSetupSuccessfully
 
