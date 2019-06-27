@@ -3,7 +3,6 @@ sudo: false
 branches:
   only:
     - master
-    - /^\d\.\d+$/
 jdk:
   -openjdk9
 scala:
