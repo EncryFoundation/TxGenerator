@@ -2,20 +2,20 @@ package org.encryfoundation.generator.actors
 
 import akka.actor.{Actor, ActorRef, Cancellable, Props}
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.InfluxActor._
 import org.encryfoundation.generator.modifiers.box.AssetBox
-import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
+import org.encryfoundation.generator.utils.{NetworkService, PeerForConnection, Settings}
 import com.google.common.base.Charsets
 import com.google.common.hash.{BloomFilter, Funnels}
+import org.encryfoundation.common.utils.Algos
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class BoxesHolder(settings: Settings,
                   influx: Option[ActorRef],
-                  peer: Node) extends Actor with StrictLogging {
+                  peer: PeerForConnection) extends Actor with StrictLogging {
 
   context.system.scheduler.schedule(
     5.seconds, settings.boxesHolderSettings.askingAPIFrequency, self, RequestForNewBoxesFromApi
@@ -122,7 +122,7 @@ class BoxesHolder(settings: Settings,
 }
 
 object BoxesHolder {
-  def props(settings: Settings, influx: Option[ActorRef], peer: Node): Props =
+  def props(settings: Settings, influx: Option[ActorRef], peer: PeerForConnection): Props =
     Props(new BoxesHolder(settings, influx, peer))
 
   case object RequestForNewBoxesFromApi

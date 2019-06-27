@@ -1,9 +1,8 @@
 package org.encryfoundation.generator.utils
 
-import java.net.InetSocketAddress
 import scala.concurrent.duration.FiniteDuration
 
-case class Settings(peers: List[Node],
+case class Settings(peer: PeerForConnection,
                     influxDB: Option[InfluxDBSettings],
                     generator: GeneratorSettings,
                     boxesHolderSettings: BoxesHolderSettings,
@@ -11,11 +10,12 @@ case class Settings(peers: List[Node],
                     network: NetworkSettings,
                     ntp: NetworkTimeProviderSettings)
 
-case class Node(explorerHost: String,
-                explorerPort: Int,
-                nodeHost: String,
-                nodePort: Int,
-                mnemonicKey: String)
+final case class PeerForConnection(peerHost: String,
+                                   peerPort: Int,
+                                   peerApiPort: Int,
+                                   mnemonicKey: String,
+                                   explorerHost: String,
+                                   explorerPort: Int)
 
 case class InfluxDBSettings(url: String,
                             login: String,
@@ -42,8 +42,8 @@ case class TransactionsSettings(numberOfDataTxs: Int,
 case class NetworkSettings(syncPacketLength: Int,
                            bindAddressHost: String,
                            bindAddressPort: Int,
+                           declaredAddressHost: String,
+                           declaredAddressPort: Int,
                            nodeName: String,
                            appVersion: String,
-                           handshakeTimeout: FiniteDuration,
-                           peerForConnectionHost: String,
-                           peerForConnectionPort: Int)
+                           handshakeTimeout: FiniteDuration)

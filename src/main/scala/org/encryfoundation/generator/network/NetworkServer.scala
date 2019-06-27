@@ -1,7 +1,6 @@
 package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
-
 import akka.actor.SupervisorStrategy.Restart
 import akka.actor.{Actor, ActorRef, ActorSystem, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.io.Tcp.SO.KeepAlive
@@ -12,14 +11,12 @@ import org.encryfoundation.common.network.BasicMessagesRepo.{InvNetworkMessage, 
 import org.encryfoundation.common.utils.TaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.actors.Generator
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
-import org.encryfoundation.generator.network.BasicMessagesRepo.Outgoing
 import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInvForTx
-import org.encryfoundation.generator.network.NetworkServer.{ConnectionSetupSuccessfully, RequestPeerForConnection}
+import org.encryfoundation.generator.network.NetworkServer.RequestPeerForConnection
 import org.encryfoundation.generator.network.PeerHandler._
 import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.utils.Mnemonic.createPrivKey
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
-
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContextExecutor
 
@@ -36,7 +33,9 @@ class NetworkServer(settings: Settings,
     new InetSocketAddress(settings.network.bindAddressHost, settings.network.bindAddressPort)
 
   val connectingPeer: InetSocketAddress =
-    new InetSocketAddress(settings.network.peerForConnectionHost, settings.network.peerForConnectionPort)
+    new InetSocketAddress(settings.peer.peerHost, settings.peer.peerPort)
+
+  var knownPeers: Map[InetSocketAddress, ActorRef] = Map.empty
 
   IO(Tcp) ! Bind(self, selfPeer, options = KeepAlive(true) :: Nil, pullMode = false)
 
@@ -55,6 +54,8 @@ class NetworkServer(settings: Settings,
     case CommandFailed(add: Bind) =>
       logger.info(s"Failed to bind to ${add.localAddress} cause of: ${add.failureMessage.cause}. Stopping network actor.")
       context.stop(self)
+
+    case any => logger.info(s"Got $any in bindLogic")
   }
 
   def connectionWithPeerLogic: Receive = {
@@ -76,40 +77,33 @@ class NetworkServer(settings: Settings,
 
     case HandshakeDone(address) =>
       logger.info(s"Handshake process done. Starting business logic..")
+      knownPeers = knownPeers.updated(address, sender)
+      system.actorOf(
+        Generator.props(settings, createPrivKey(Some(settings.peer.mnemonicKey)), settings.peer, influx, self), settings.peer.explorerHost)
       context.become(businessLogic)
 
     case ConnectionRefused =>
       logger.info(s"Handshake timeout.. Starting awaiting process again...")
       context.system.scheduler.scheduleOnce(5.seconds, self, RequestPeerForConnection)
+
+    case any => logger.info(s"Got $any in connectionWithPeerLogic")
   }
 
   def businessLogic: Receive = {
-
-    case RemovePeerFromConnectionList(peer) =>
-      isConnected = false
-      tmpConnectionHandler = None
+    case StopConnection(peer) =>
+      knownPeers -= peer
       logger.info(s"Disconnected from $peer.")
+      context.system.scheduler.scheduleOnce(5.seconds, self, RequestPeerForConnection)
+      context.become(connectionWithPeerLogic)
 
     case BroadcastInvForTx(tx) =>
-      val inv: NetworkMessage =
-        InvNetworkMessage(ModifierTypeId @@ Transaction.modifierTypeId -> Seq(ModifierId @@ tx.id))
-      tmpConnectionHandler.foreach(_ ! inv)
-      logger.debug(s"Send inv message to remote.")
-
-    case ConnectionSetupSuccessfully =>
-      settings.peers.foreach { peer =>
-        logger.info(s"Created generator actor for ${peer.explorerHost}:${peer.explorerPort}.")
-        system.actorOf(
-          Generator.props(settings, createPrivKey(Some(peer.mnemonicKey)), peer, influx, self), peer.explorerHost)
+      val inv: NetworkMessage = InvNetworkMessage(ModifierTypeId @@ Transaction.modifierTypeId -> Seq(ModifierId @@ tx.id))
+      knownPeers.foreach { case (add, ref) =>
+        logger.debug(s"Send inv message to $add.")
+        ref ! inv
       }
-
     case msg@TransactionForCommit(_) => messagesHandler ! msg
-
-    case msg => logger.info(s"Got strange message on NetworkServer: $msg.")
-  }
-
-  def errorHandler: Receive = {
-    case _ =>
+    case any => logger.info(s"Got $any in businessLogic")
   }
 }
 

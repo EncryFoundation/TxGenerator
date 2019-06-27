@@ -7,8 +7,8 @@ import akka.util.ByteString
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.syntax._
 import io.circe.parser.decode
-import org.encryfoundation.common.Algos
-import org.encryfoundation.common.transaction.PubKeyLockedContract
+import org.encryfoundation.common.modifiers.mempool.transaction.PubKeyLockedContract
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.GeneratorApp._
 import org.encryfoundation.generator.modifiers.box.Box
@@ -16,14 +16,14 @@ import scala.concurrent.Future
 
 object NetworkService extends StrictLogging {
 
-  def commitTransaction(node: Node, tx: Transaction): Future[HttpResponse] =
+  def commitTransaction(node: PeerForConnection, tx: Transaction): Future[HttpResponse] =
     Http().singleRequest(HttpRequest(
       method = HttpMethods.POST,
       uri = "/transactions/send",
       entity = HttpEntity(ContentTypes.`application/json`, tx.asJson.toString)
-    ).withEffectiveUri(securedConnection = false, Host(node.nodeHost, node.nodePort)))
+    ).withEffectiveUri(securedConnection = false, Host(node.peerHost, node.peerApiPort)))
 
-  def requestUtxos(node: Node, from: Int, to: Int): Future[List[Box]] = {
+  def requestUtxos(node: PeerForConnection, from: Int, to: Int): Future[List[Box]] = {
     val privKey = Mnemonic.createPrivKey(Option(node.mnemonicKey))
     val contractHash: String = Algos.encode(PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract.hash)
     Http().singleRequest(HttpRequest(

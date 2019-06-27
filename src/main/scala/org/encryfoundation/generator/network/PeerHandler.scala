@@ -11,7 +11,6 @@ import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.network.BasicMessagesRepo.{GeneralizedNetworkMessage, Handshake, NetworkMessage}
 import org.encryfoundation.generator.network.PeerHandler._
 import org.encryfoundation.generator.network.BasicMessagesRepo._
-import org.encryfoundation.generator.network.NetworkServer.ConnectionSetupSuccessfully
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
 import scala.annotation.tailrec
 import scala.collection.immutable.HashMap
@@ -33,16 +32,12 @@ class PeerHandler(remoteAddress: InetSocketAddress,
 
   override def postStop(): Unit = {
     logger.info(s"Peer handler $self to $remoteAddress is destroyed.")
-    context.parent ! RemovePeerFromConnectionList(remoteAddress)
     remote ! Close
   }
 
   var chunksBuffer: ByteString = CompactByteString.empty
   var outMessagesBuffer: HashMap[Long, ByteString] = HashMap.empty
   var outMessagesCounter: Long = 0
-
-  var isHandshakeSent: Boolean = false
-  var receivedHandshake: Option[Handshake] = None
 
   def handshakeSendingLogic(isHandshakeSent: Boolean,
                             receivedHandshake: Option[Handshake],
@@ -57,7 +52,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
         logger.info(s"Successfully done handshake process.")
         timeout.foreach(_.cancel())
         context.parent ! HandshakeDone(receivedHandshake.get.declaredAddress.getOrElse(remoteAddress))
-        context.become(workingCycle)
+        context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)))
       } else context.become(handshakeSendingLogic(
         isHandshakeSent = true,
         receivedHandshake,
@@ -72,7 +67,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
             logger.info(s"Successfully done handshake process.")
             timeout.foreach(_.cancel())
             context.parent ! HandshakeDone(receivedHandshake.get.declaredAddress.getOrElse(remoteAddress))
-            context.become(workingCycle)
+            context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)))
           } else context.become(handshakeSendingLogic(
             isHandshakeSent,
             receivedHandshake = Some(handshake),
@@ -80,109 +75,47 @@ class PeerHandler(remoteAddress: InetSocketAddress,
           )
         case message => logger.info(s"Expecting handshake, but received ${message.messageName}.")
       }
+
       case Failure(exception) =>
         logger.info(s"Error during parsing a handshake: $exception.")
+        context.parent ! ConnectionRefused
         self ! Close
     }
-
     case HandshakeTimeout =>
-      logger.info(s"Handshake timeout has expired for $remoteAddress, going to drop the connection.")
-      context.parent ! ConnectionRefused
-      self ! Close
-
-  }
-
-  def workingCycle: Receive = {
-    case _ =>
-  }
-
-  def awaitingConnectionBehaviour(timeout: Option[Cancellable]): Receive = {
-    case StartIteration => timeProvider.time() map { time =>
-      val handshake: Handshake = Handshake(
-        protocolToBytes(settings.network.appVersion),
-        settings.network.nodeName,
-        Some(selfAddress),
-        time
-      )
-      remote ! Write(ByteString(GeneralizedNetworkMessage.toProto(handshake).toByteArray))
-      isHandshakeSent = true
-      logger.info(s"Sent initial handshake to $remoteAddress.")
-      if (receivedHandshake.isDefined && isHandshakeSent) {
-        logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
-        timeout.foreach(_.cancel())
-        context.parent ! ConnectionSetupSuccessfully
+      if (isHandshakeSent && receivedHandshake.isDefined) {
+        logger.info(s"Connection successfully bounded.")
+        context.parent ! HandshakeDone(receivedHandshake.get.declaredAddress.getOrElse(remoteAddress))
         context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)))
-      } else context.become(awaitingConnectionBehaviour(
-        Some(context.system.scheduler.scheduleOnce(settings.network.handshakeTimeout, self, HandshakeTimeout)))
-      )
-    }
-
-    case HandshakeTimeout =>
-      logger.info(s"Handshake timeout has expired for $remoteAddress, going to drop the connection.")
-      self ! Close
-
-    case HandshakeDone =>
-      logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
-      remote ! ResumeReading
-      timeout.foreach(_.cancel())
-      context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, receivedHandshake.get)))
-
-    case Received(data) => GeneralizedNetworkMessage.fromProto(data.toArray) match {
-      case Success(value) => value match {
-        case handshake: Handshake =>
-          logger.info(s"Got a Handshake from $remoteAddress.")
-          receivedHandshake = Some(handshake)
-          remote ! ResumeReading
-          if (isHandshakeSent && receivedHandshake.isDefined) {
-            logger.info(s"Got successfully bounded connection with $remoteAddress. Starting working behaviour.")
-            timeout.foreach(_.cancel())
-            context.parent ! ConnectionSetupSuccessfully
-            context.become(workingCycleWriting(ConnectedPeer(remoteAddress, self, Outgoing, handshake)))
-          } else context.become(awaitingConnectionBehaviour(timeout))
-
-        case message => logger.info(s"Expecting handshake, but received ${message.messageName}.")
-      }
-      case Failure(exception) =>
-        logger.info(s"Error during parsing a handshake: $exception.")
+      } else {
+        logger.info(s"Handshake timeout has expired for $remoteAddress, going to drop the connection.")
+        context.parent ! ConnectionRefused
         self ! Close
-    }
-    case _ =>
+      }
   }
 
-  override def receive: Receive = awaitingConnectionBehaviour(None)
-
-  def defaultLogic: Receive = {
-    case cc: ConnectionClosed =>
-      logger.info(s"Connection closed to $remoteAddress cause ${cc.getErrorCause}.")
-      context.stop(self)
-
-    case fail@CommandFailed(cmd: Command) =>
-      logger.info(s"Failed to execute command : $cmd cause ${fail.cause}.")
-      remote ! ResumeReading
-
-    case _ =>
-  }
+  override def receive: Receive = handshakeSendingLogic(isHandshakeSent = false, None, None)
 
   def workingCycleWriting(cp: ConnectedPeer): Receive = workingCycleLocalInterfaceWritingMode(cp)
     .orElse(workingCycleRemoteInterface(cp))
-    .orElse(defaultLogic)
+    .orElse(errorsHandler(cp))
 
   def workingCycleLocalInterfaceWritingMode(cp: ConnectedPeer): Receive = {
     case message: NetworkMessage =>
       def sendMessage(): Unit = {
         outMessagesCounter += 1
+        logger.debug(s"Sent to $remote msg: ${message.messageName}")
         val messageToNetwork: Array[Byte] = GeneralizedNetworkMessage.toProto(message).toByteArray
         val bytes: ByteString = ByteString(Ints.toByteArray(messageToNetwork.length) ++ messageToNetwork)
         remote ! Write(bytes, Ack(outMessagesCounter))
       }
-
       sendMessage()
 
     case fail@CommandFailed(Write(msg, Ack(id))) =>
-      logger.debug(s"Failed to write ${msg.length} bytes to $remoteAddress cause ${fail.cause}, switching to buffering mode")
+      logger.debug(s"Failed to write ${msg.length} bytes to $remote cause ${fail.cause}, switching to buffering mode")
       remote ! ResumeReading
       toBuffer(id, msg)
       context.become(workingCycleBuffering(cp))
+
     case Ack(_) => // ignore ACKs in stable mode
     case WritingResumed => // ignore in stable mode
   }
@@ -194,7 +127,7 @@ class PeerHandler(remoteAddress: InetSocketAddress,
       packet._1.find { packet =>
         GeneralizedNetworkMessage.fromProto(packet.toArray) match {
           case Success(message) =>
-            receivedMessagesHandler ! MessageFromNetwork(message, Some(cp))
+            receivedMessagesHandler ! MessageFromNetwork(message, cp)
             logger.info("Received message " + message.messageName + " from " + remoteAddress)
             false
           case Failure(e) =>
@@ -207,7 +140,20 @@ class PeerHandler(remoteAddress: InetSocketAddress,
 
   def workingCycleBuffering(cp: ConnectedPeer): Receive = workingCycleLocalInterfaceBufferingMode(cp)
     .orElse(workingCycleRemoteInterface(cp))
-    .orElse(defaultLogic)
+    .orElse(errorsHandler(cp))
+
+  def errorsHandler(connectedPeer: ConnectedPeer): Receive = {
+    case cc: ConnectionClosed =>
+      logger.info(s"Connection closed to $remoteAddress cause ${cc.getErrorCause}.")
+      context.parent ! StopConnection(connectedPeer.socketAddress)
+      context.stop(self)
+
+    case fail@CommandFailed(cmd: Command) =>
+      logger.info(s"Failed to execute command : $cmd cause ${fail.cause}.")
+      remote ! ResumeReading
+
+    case _ =>
+  }
 
   // operate in ACK mode until all buffered messages are transmitted
   def workingCycleLocalInterfaceBufferingMode(cp: ConnectedPeer): Receive = {
@@ -268,15 +214,11 @@ object PeerHandler {
 
   case object ConnectionRefused
 
-  case object StartIteration
+  case object HandshakeTimeout
 
-  sealed trait ConnectionMessages
+  final case class StopConnection(peer: InetSocketAddress) extends AnyVal
 
-  case object HandshakeTimeout extends ConnectionMessages
-
-  //case object HandshakeDone extends ConnectionMessages
-
-  case class RemovePeerFromConnectionList(peer: InetSocketAddress) extends ConnectionMessages
+  case class RemovePeerFromConnectionList(peer: InetSocketAddress)
 
   final case class Ack(offset: Long) extends Tcp.Event
 

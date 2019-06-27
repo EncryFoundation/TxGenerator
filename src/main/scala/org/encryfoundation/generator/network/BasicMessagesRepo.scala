@@ -23,7 +23,7 @@ object BasicMessagesRepo extends StrictLogging {
     override def toString: String = s"ConnectedPeer($socketAddress)"
   }
 
-  final case class MessageFromNetwork(message: NetworkMessage, source: Option[ConnectedPeer])
+  final case class MessageFromNetwork(message: NetworkMessage, source: ConnectedPeer)
 
   case class SyncInfo(lastHeaderIds: Seq[ModifierId]) {
 
