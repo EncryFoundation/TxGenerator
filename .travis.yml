@@ -11,3 +11,7 @@ cache:
   - $HOME/.sbt
 before_cache:
 - find $HOME/.sbt        -name "*.lock"               -print -delete
+addons:
+  apt:
+    packages:
+      - oracle-java8-installer
