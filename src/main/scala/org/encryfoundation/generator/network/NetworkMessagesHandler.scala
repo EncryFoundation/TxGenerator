@@ -17,12 +17,14 @@ class NetworkMessagesHandler(settings: Settings) extends Actor with StrictLoggin
 
   override def receive: Receive = {
     case TransactionForCommit(transaction) =>
+      logger.debug(s"Before TransactionForCommit: ${localGeneratedTransactions.size}")
       localGeneratedTransactions :+= transaction
+      logger.debug(s"After TransactionForCommit: ${localGeneratedTransactions.size}")
       context.parent ! BroadcastInvForTx(transaction)
 
     case MessageFromNetwork(message, _) => message match {
       case RequestModifiersNetworkMessage(invData) if invData._1 == Transaction.modifierTypeId =>
-        logger.info(s"Got request modifiers on NMH")
+        logger.debug(s"Got request modifiers on NMH")
         val tmpInv: Seq[String] = invData._2.map(Algos.encode)
         val transactions: Seq[Transaction] = localGeneratedTransactions.filter(tx => tmpInv.contains(Algos.encode(tx.id)))
         val forSend: Map[Array[Byte] @@ CoreTaggedTypes.ModifierId.Tag, Array[Byte]] = transactions.map { tx =>
@@ -33,7 +35,7 @@ class NetworkMessagesHandler(settings: Settings) extends Actor with StrictLoggin
         localGeneratedTransactions = localGeneratedTransactions.filter(tx =>
           !tmpTxs.contains(Algos.encode(tx.id))
         )
-        logger.info(s"Sent modifiers to node.")
+        logger.debug(s"Sent modifiers to node $sender")
       case _ =>
     }
     case _ =>

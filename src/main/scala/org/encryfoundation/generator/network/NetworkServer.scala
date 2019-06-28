@@ -1,7 +1,6 @@
 package org.encryfoundation.generator.network
 
 import java.net.InetSocketAddress
-
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import akka.io.Tcp.SO.KeepAlive
 import akka.io.Tcp._
@@ -17,7 +16,6 @@ import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.utils.Mnemonic.createPrivKey
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
-
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContextExecutor
 
@@ -40,7 +38,7 @@ class NetworkServer(settings: Settings,
   val connectingPeer: InetSocketAddress =
     new InetSocketAddress(settings.network.peerForConnectionHost, settings.network.peerForConnectionPort)
 
-  IO(Tcp) ! Bind(self, selfPeer)
+  IO(Tcp) ! Bind(self, selfPeer, options = KeepAlive(true) :: Nil, pullMode = false)
 
   override def receive: Receive = {
     case Bound(localAddress) =>
@@ -51,15 +49,19 @@ class NetworkServer(settings: Settings,
       logger.info(s"Failed to bind to $selfPeer.")
       context.stop(self)
 
-    case Connected(remote, _) =>
+    case Connected(remote, _) if !isConnected && remote.getAddress == connectingPeer.getAddress =>
       val handler: ActorRef = context.actorOf(
-        PeerHandler.props(remote, sender(), settings, timeProvider, Outgoing, messagesHandler)
+        PeerHandler.props(remote, sender(), settings, timeProvider, Outgoing, messagesHandler), "PeerHandler"
       )
       logger.info(s"Successfully connected to $remote. Creating handler: $handler.")
       isConnected = true
       tmpConnectionHandler = Some(handler)
       sender ! Register(handler)
       sender ! ResumeReading
+
+    case Connected(remote, _) =>
+      logger.info(s"Got Connected message but ${remote.getAddress} == ${connectingPeer.getAddress} " +
+        s"${remote.getAddress == connectingPeer.getAddress} && $isConnected.")
 
     case CommandFailed(c: Connect) =>
       isConnected = false

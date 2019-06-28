@@ -22,5 +22,5 @@ object GeneratorApp extends App with StrictLogging {
     settings.influxDB.map(_ => system.actorOf(InfluxActor.props(settings), "influxDB"))
 
   val timeProvider: NetworkTimeProvider = new NetworkTimeProvider(settings.ntp)
-  val networkServer: ActorRef = system.actorOf(NetworkServer.props(settings, timeProvider, influx))
+  val networkServer: ActorRef = system.actorOf(NetworkServer.props(settings, timeProvider, influx), "networkServer")
 }

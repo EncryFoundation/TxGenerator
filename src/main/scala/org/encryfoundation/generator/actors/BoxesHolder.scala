@@ -33,7 +33,7 @@ class BoxesHolder(settings: Settings,
 
   def boxesHolderBehavior(pool: List[Batch] = List()): Receive = {
     case BoxesFromApi(boxes) =>
-      logger.info(s"BoxesHolder got message `BoxesFromApi`. Number of received boxes is: ${boxes.size}.")
+      logger.debug(s"BoxesHolder got message `BoxesFromApi`. Number of received boxes is: ${boxes.size}.")
       val batchesPool: List[Batch] = batchesForTransactions(boxes)
       val newBatches: List[Batch] = pool ++: batchesPool
       influx.foreach(_ ! PoolState(newBatches.size))
@@ -41,7 +41,7 @@ class BoxesHolder(settings: Settings,
       context.become(boxesHolderBehavior(newBatches))
 
     case AskBoxesFromGenerator =>
-      logger.info(s"BoxesHolder got message `AskBoxesFromGenerator`. Current pool is: ${pool.size}")
+      logger.debug(s"BoxesHolder got message `AskBoxesFromGenerator`. Current pool is: ${pool.size}")
       val batchesAfterMT: List[Batch] =
         if (settings.transactions.numberOfMonetaryTxs > 0) {
           val batchesForTxs: List[Batch] = pool.take(settings.transactions.numberOfMonetaryTxs)
@@ -58,17 +58,17 @@ class BoxesHolder(settings: Settings,
         } else batchesAfterMT
       influx.foreach(_ ! PoolState(batchesAfterDT.size))
 
-      logger.info(s"Number of batches before diff: ${pool.size}.")
-      logger.info(s"Number of batches after diff: ${batchesAfterDT.size}.")
+      logger.debug(s"Number of batches before diff: ${pool.size}.")
+      logger.debug(s"Number of batches after diff: ${batchesAfterDT.size}.")
       influx.foreach(_ ! SentBatches(batchesAfterDT.size))
       context.become(boxesHolderBehavior(batchesAfterDT))
 
     case RequestForNewBoxesFromApi =>
       if (pool.size < settings.boxesHolderSettings.poolSize) {
-        logger.info(s"Current pool size is: ${pool.size}. Asking new boxes from api!")
+        logger.debug(s"Current pool size is: ${pool.size}. Asking new boxes from api!")
         getBoxes(0, settings.boxesHolderSettings.rangeForAskingBoxes)
       }
-      else logger.info(s"Current pool is: ${pool.size}. We won't ask new boxes from api!")
+      else logger.debug(s"Current pool is: ${pool.size}. We won't ask new boxes from api!")
   }
 
   def batchesForTransactions(list: List[AssetBox]): List[Batch] = {
@@ -85,7 +85,7 @@ class BoxesHolder(settings: Settings,
   def cleanReceivedBoxesFromUsed(usedB: Map[String, Cancellable],
                                  newB: List[AssetBox]): (List[AssetBox], Map[String, Cancellable]) = {
     val newBMap: Map[String, AssetBox] = Map(newB.map(k => Algos.encode(k.id) -> k): _*)
-    logger.info(s"cleanReceivedBoxesFromUsed: New boxes map size is: ${newBMap.size}")
+    logger.debug(s"cleanReceivedBoxesFromUsed: New boxes map size is: ${newBMap.size}")
     val (usedBoxes: Map[String, Cancellable], newBoxes: Map[String, AssetBox]) =
       usedB.foldLeft(Map[String, Cancellable](), newBMap) {
         case ((newUsedCollection, newBoxesCollection), (id, timer)) => newBoxesCollection.get(id) match {
@@ -95,7 +95,7 @@ class BoxesHolder(settings: Settings,
             (newUsedCollection, newBoxesCollection)
         }
       }
-    logger.info(s"CleanNewBoxesFromUsed: Used - ${usedBoxes.size}. New - ${newBoxes.size}")
+    logger.debug(s"CleanNewBoxesFromUsed: Used - ${usedBoxes.size}. New - ${newBoxes.size}")
     (newBoxes.values.toList, usedBoxes)
   }
 
