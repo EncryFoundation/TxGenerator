@@ -92,13 +92,16 @@ class Generator(settings: Settings,
       case 4 if forTx.isDefined =>
         val compiledContract: CompiledContract = Contracts.multiSigContractScratch(multisigKeys.map(_.publicKeyBytes)).get
         val ts: Long = System.currentTimeMillis()
+
         val txWithoutProofs: Transaction = TransactionsFactory.defaultPaymentTransactionWithoutRandom(
           privKey,
           settings.transactions.feeAmount,
           ts,
           multisigBoxes(forTx.get).collect {
             case b: MonetaryBox => b
-          }.map(_ -> Some(compiledContract -> Seq())),
+          }.map(_ -> Some(compiledContract -> Seq())) match {
+            case init :+ last => init :+ last._1 -> None
+          },
           privKey.publicImage.address.address,
           settings.transactions.requiredAmount - settings.transactions.feeAmount,
           settings.transactions.numberOfCreatedDirectives
@@ -118,7 +121,9 @@ class Generator(settings: Settings,
           ts,
           multisigBoxes(forTx.get).collect {
             case b: MonetaryBox => b
-          }.map(_ -> Some(compiledContract -> proofs)),
+          }.map(_ -> Some(compiledContract -> proofs)) match {
+            case init :+ last => init :+ last._1 -> None
+          },
           privKey.publicImage.address.address,
           settings.transactions.requiredAmount - settings.transactions.feeAmount,
           settings.transactions.numberOfCreatedDirectives
