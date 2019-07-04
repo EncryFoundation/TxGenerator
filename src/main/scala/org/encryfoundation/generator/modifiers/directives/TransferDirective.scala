@@ -6,12 +6,12 @@ import com.google.common.primitives.{Bytes, Ints, Longs}
 import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
+import org.encryfoundation.common.modifiers.mempool.transaction.EncryAddress
+import org.encryfoundation.common.modifiers.mempool.transaction.EncryAddress.Address
 import org.encryfoundation.common.serialization.Serializer
-import org.encryfoundation.common.transaction.EncryAddress
-import org.encryfoundation.common.transaction.EncryAddress.Address
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
-import org.encryfoundation.common.utils.Utils
-import org.encryfoundation.common.{Algos, Constants}
+import org.encryfoundation.common.utils.{Algos, Utils}
+import org.encryfoundation.common.utils.constants.{Constants, TestNetConstants}
 import scorex.crypto.hash.Digest32
 import org.encryfoundation.generator.modifiers.box.{AssetBox, Box, EncryProposition}
 
@@ -104,8 +104,8 @@ object TransferDirectiveSerializer extends Serializer[TransferDirective] {
     val addressLen: Int           = bytes.head.toInt
     val address: Address          = new String(bytes.slice(1, 1 + addressLen), Algos.charset)
     val amount: Long              = Longs.fromByteArray(bytes.slice(1 + addressLen, 1 + addressLen + 8))
-    val tokenIdOpt: Option[ADKey] = if ((bytes.length - (1 + addressLen + 8)) == Constants.ModifierIdSize) {
-      Some(ADKey @@ bytes.takeRight(Constants.ModifierIdSize))
+    val tokenIdOpt: Option[ADKey] = if ((bytes.length - (1 + addressLen + 8)) == TestNetConstants.ModifierIdSize) {
+      Some(ADKey @@ bytes.takeRight(TestNetConstants.ModifierIdSize))
     } else None
     TransferDirective(address, amount, tokenIdOpt)
   }

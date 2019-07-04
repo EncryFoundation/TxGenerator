@@ -7,10 +7,11 @@ import akka.util.ByteString
 import com.typesafe.scalalogging.StrictLogging
 import io.circe.{Decoder, HCursor}
 import io.circe.parser.decode
-import org.encryfoundation.common.Algos
-import org.encryfoundation.common.transaction.PubKeyLockedContract
+import org.encryfoundation.common.modifiers.mempool.transaction.PubKeyLockedContract
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.generator.GeneratorApp._
 import org.encryfoundation.generator.modifiers.box.Box
+
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 

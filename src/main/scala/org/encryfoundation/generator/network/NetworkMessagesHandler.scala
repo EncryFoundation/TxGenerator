@@ -2,7 +2,7 @@ package org.encryfoundation.generator.network
 
 import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.common.Algos
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
 import org.encryfoundation.generator.network.BasicMessagesRepo._
 import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInvForTx

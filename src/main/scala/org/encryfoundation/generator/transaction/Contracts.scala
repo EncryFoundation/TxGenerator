@@ -17,7 +17,7 @@ object Contracts {
            |    anyOf(signature.map(lamb (x: Array[Byte]) = checkSig(x, message, key)))
            |  }
            |
-         |  let ownerPubKey = base58'${Base58.encode(owners.head)}'
+           |  let ownerPubKey = base58'${Base58.encode(owners.head)}'
            |  let garantPubKey = base58'${Base58.encode(owners(1))}'
            |  let receiverPubKey = base58'${Base58.encode(owners(2))}'
            |  let keys = Array(ownerPubKey, garantPubKey, receiverPubKey)

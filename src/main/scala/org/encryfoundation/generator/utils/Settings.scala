@@ -38,7 +38,7 @@ case class TransactionsSettings(numberOfDataTxs: Int,
                                 dataTxSize: Int,
                                 numberOfCreatedDirectives: Int)
 
-case class MultisigSettings(checkTxMinedPeriod: Int, numberOfBlocksToCheck: Int)
+case class MultisigSettings(checkTxMinedPeriod: Int, numberOfBlocksToCheck: Int, mnemonicKeys: List[String])
 
 case class NetworkSettings(syncPacketLength: Int,
                            bindAddressHost: String,

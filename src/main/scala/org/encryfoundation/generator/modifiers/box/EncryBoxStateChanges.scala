@@ -1,6 +1,6 @@
 package org.encryfoundation.generator.modifiers.box
 
-import org.encryfoundation.common.Algos
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 
 abstract class EncryBoxStateChangeOperation

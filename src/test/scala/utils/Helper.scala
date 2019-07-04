@@ -1,8 +1,9 @@
 package utils
 
-import org.encryfoundation.common.transaction.EncryAddress.Address
+import org.encryfoundation.common.modifiers.mempool.transaction.EncryAddress.Address
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.generator.modifiers.box.{AssetBox, EncryProposition}
+
 import scala.util.Random
 
 object Helper {

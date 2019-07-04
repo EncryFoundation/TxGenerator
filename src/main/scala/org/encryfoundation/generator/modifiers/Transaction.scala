@@ -2,13 +2,13 @@ package org.encryfoundation.generator.modifiers
 
 import TransactionProto.TransactionProtoMessage
 import com.google.protobuf.ByteString
-import org.encryfoundation.common.Algos
-import org.encryfoundation.common.transaction.{Input, InputSerializer, Proof, ProofSerializer}
 import org.encryfoundation.generator.modifiers.box.Box
 import org.encryfoundation.generator.modifiers.directives.{Directive, DirectiveProtoSerializer}
 import scorex.crypto.hash.{Blake2b256, Digest32}
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
+import org.encryfoundation.common.modifiers.mempool.transaction.{Input, InputSerializer, Proof, ProofSerializer}
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.prismlang.core.Types
 import org.encryfoundation.prismlang.core.wrapped.{PObject, PValue}
 

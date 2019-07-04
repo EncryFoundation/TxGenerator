@@ -2,7 +2,7 @@ package org.encryfoundation.generator.modifiers.box
 
 import com.google.common.primitives.Longs
 import io.circe.Encoder
-import org.encryfoundation.common.Algos
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
 import org.encryfoundation.prismlang.core.wrapped.{PObject, PValue}
 import org.encryfoundation.prismlang.core.{PConvertible, Types}

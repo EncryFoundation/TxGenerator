@@ -2,13 +2,14 @@ package org.encryfoundation.generator.actors
 
 import akka.actor.{Actor, ActorRef, Cancellable, Props}
 import com.typesafe.scalalogging.StrictLogging
-import org.encryfoundation.common.Algos
 import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.InfluxActor._
 import org.encryfoundation.generator.modifiers.box.AssetBox
 import org.encryfoundation.generator.utils.{NetworkService, Node, Settings}
 import com.google.common.base.Charsets
 import com.google.common.hash.{BloomFilter, Funnels}
+import org.encryfoundation.common.utils.Algos
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
