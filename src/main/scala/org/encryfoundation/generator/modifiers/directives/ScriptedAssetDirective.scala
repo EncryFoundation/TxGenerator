@@ -7,11 +7,11 @@ import scala.util.Try
 import com.google.common.primitives.{Bytes, Ints, Longs}
 import com.google.protobuf.ByteString
 import org.encryfoundation.common.serialization.Serializer
-import org.encryfoundation.common.{Algos, Constants}
-import org.encryfoundation.common.utils.Utils
+import org.encryfoundation.common.utils.{Algos, Utils}
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
+import org.encryfoundation.common.utils.constants.TestNetConstants
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
 import scorex.crypto.hash.Digest32
 import org.encryfoundation.generator.modifiers.box.{AssetBox, Box, EncryProposition}
@@ -90,10 +90,10 @@ object ScriptedAssetDirectiveSerializer extends Serializer[ScriptedAssetDirectiv
     )
 
   override def parseBytes(bytes: Array[Byte]): Try[ScriptedAssetDirective] = Try {
-    val contractHash: ContractHash = bytes.take(Constants.DigestLength)
-    val amount: Long = Longs.fromByteArray(bytes.slice(Constants.DigestLength, Constants.DigestLength + 8))
-    val tokenIdOpt: Option[ADKey] = if ((bytes.length - (Constants.DigestLength + 8)) == Constants.ModifierIdSize) {
-      Some(ADKey @@ bytes.takeRight(Constants.ModifierIdSize))
+    val contractHash: ContractHash = bytes.take(TestNetConstants.DigestLength)
+    val amount: Long = Longs.fromByteArray(bytes.slice(TestNetConstants.DigestLength, TestNetConstants.DigestLength + 8))
+    val tokenIdOpt: Option[ADKey] = if ((bytes.length - (TestNetConstants.DigestLength + 8)) == TestNetConstants.ModifierIdSize) {
+      Some(ADKey @@ bytes.takeRight(TestNetConstants.ModifierIdSize))
     } else None
     ScriptedAssetDirective(contractHash, amount, tokenIdOpt)
   }

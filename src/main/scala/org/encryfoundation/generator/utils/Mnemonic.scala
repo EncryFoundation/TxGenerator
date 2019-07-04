@@ -1,10 +1,11 @@
 package org.encryfoundation.generator.utils
 
-import org.encryfoundation.common.Algos
 import org.encryfoundation.common.crypto.PrivateKey25519
+import org.encryfoundation.common.utils.Algos
 import scodec.bits.BitVector
 import scorex.crypto.hash.Blake2b256
 import scorex.crypto.signatures.{Curve25519, PrivateKey, PublicKey}
+
 import scala.io.Source
 
 object Mnemonic {

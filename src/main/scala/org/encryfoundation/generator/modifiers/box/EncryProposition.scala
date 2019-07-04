@@ -2,11 +2,12 @@ package org.encryfoundation.generator.modifiers.box
 
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder}
+import org.encryfoundation.common.modifiers.mempool.transaction._
 import org.encryfoundation.common.serialization.Serializer
-import org.encryfoundation.common.transaction._
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
-import org.encryfoundation.common.Algos
 import scorex.crypto.signatures.PublicKey
+
 import scala.util.{Failure, Success, Try}
 
 case class EncryProposition(contractHash: ContractHash) extends Proposition {

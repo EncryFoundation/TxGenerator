@@ -8,8 +8,8 @@ import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.serialization.Serializer
-import org.encryfoundation.common.utils.Utils
-import org.encryfoundation.common.{Algos, Constants}
+import org.encryfoundation.common.utils.{Algos, Utils}
+import org.encryfoundation.common.utils.constants.TestNetConstants
 import scorex.crypto.hash.Digest32
 import org.encryfoundation.generator.modifiers.box.{DataBox, EncryProposition}
 import org.encryfoundation.generator.modifiers.directives.Directive.DTypeId
@@ -81,9 +81,9 @@ object DataDirectiveSerializer extends Serializer[DataDirective] {
     )
 
   override def parseBytes(bytes: Array[Byte]): Try[DataDirective] = Try {
-    val contractHash: ContractHash = bytes.take(Constants.DigestLength)
-    val dataLen: Int               = Ints.fromByteArray(bytes.slice(Constants.DigestLength, Constants.DigestLength + 4))
-    val data: Array[DTypeId]       = bytes.slice(Constants.DigestLength + 4, Constants.DigestLength + 4 + dataLen)
+    val contractHash: ContractHash = bytes.take(TestNetConstants.DigestLength)
+    val dataLen: Int               = Ints.fromByteArray(bytes.slice(TestNetConstants.DigestLength, TestNetConstants.DigestLength + 4))
+    val data: Array[DTypeId]       = bytes.slice(TestNetConstants.DigestLength + 4, TestNetConstants.DigestLength + 4 + dataLen)
     DataDirective(contractHash, data)
   }
 }

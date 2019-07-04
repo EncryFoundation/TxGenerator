@@ -23,6 +23,7 @@ class InfluxActor(settings: Settings) extends Actor with StrictLogging {
     influxDB.write(udpPort, s"""txGenStartTime value="$nodeName"""")
   }
 
+
   override def receive: Receive = {
     case PoolState(newO) =>
       influxDB.write(udpPort, s"txsStatFromGenerator,nodeName=$nodeName value=$newO")

@@ -3,8 +3,9 @@ package org.encryfoundation.generator.modifiers.box
 import com.google.common.primitives.{Bytes, Longs, Shorts}
 import io.circe.{Decoder, Encoder, HCursor}
 import io.circe.syntax._
-import org.encryfoundation.common.Algos
 import org.encryfoundation.common.serialization.Serializer
+import org.encryfoundation.common.utils.Algos
+
 import scala.util.Try
 
 /** Stores arbitrary data in EncryTL binary format. */

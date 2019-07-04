@@ -7,8 +7,8 @@ import com.google.protobuf.ByteString
 import io.circe.syntax._
 import io.circe.{Decoder, Encoder, HCursor}
 import org.encryfoundation.common.serialization.Serializer
-import org.encryfoundation.common.utils.Utils
-import org.encryfoundation.common.{Algos, Constants}
+import org.encryfoundation.common.utils.{Algos, Utils}
+import org.encryfoundation.common.utils.constants.TestNetConstants
 import org.encryfoundation.prismlang.compiler.CompiledContract.ContractHash
 import scorex.crypto.hash.Digest32
 import org.encryfoundation.generator.modifiers.box.{Box, EncryProposition, TokenIssuingBox}
@@ -78,8 +78,8 @@ object AssetIssuingDirectiveSerializer extends Serializer[AssetIssuingDirective]
     )
 
   override def parseBytes(bytes: Array[Byte]): Try[AssetIssuingDirective] = Try {
-    val contractHash: ContractHash = bytes.take(Constants.DigestLength)
-    val amount: Long               = Longs.fromByteArray(bytes.slice(Constants.DigestLength, Constants.DigestLength + 8))
+    val contractHash: ContractHash = bytes.take(TestNetConstants.DigestLength)
+    val amount: Long               = Longs.fromByteArray(bytes.slice(TestNetConstants.DigestLength, TestNetConstants.DigestLength + 8))
     AssetIssuingDirective(contractHash, amount)
   }
 }

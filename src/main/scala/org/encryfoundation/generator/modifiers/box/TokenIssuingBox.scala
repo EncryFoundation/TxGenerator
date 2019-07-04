@@ -3,8 +3,8 @@ package org.encryfoundation.generator.modifiers.box
 import com.google.common.primitives.{Bytes, Longs, Shorts}
 import io.circe.Encoder
 import io.circe.syntax._
-import org.encryfoundation.common.Algos
 import org.encryfoundation.common.serialization.Serializer
+import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.generator.modifiers.box.TokenIssuingBox.TokenId
 
 import scala.util.Try
