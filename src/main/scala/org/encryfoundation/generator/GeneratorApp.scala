@@ -11,7 +11,7 @@ import net.ceedubs.ficus.readers.ArbitraryTypeReader._
 import org.encryfoundation.generator.network.NetworkServer
 import scala.concurrent.ExecutionContextExecutor
 
-object GeneratorApp extends App with StrictLogging {
+object GeneratorApp extends StrictLogging {
 
   implicit lazy val system: ActorSystem             = ActorSystem()
   implicit lazy val materializer: ActorMaterializer = ActorMaterializer()

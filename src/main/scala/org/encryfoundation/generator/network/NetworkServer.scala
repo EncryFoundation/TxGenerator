@@ -7,13 +7,13 @@ import akka.io.Tcp.SO.KeepAlive
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import com.typesafe.scalalogging.StrictLogging
+import org.encryfoundation.common.modifiers.mempool.transaction.Transaction
 import org.encryfoundation.generator.actors.Generator
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
 import org.encryfoundation.generator.network.BasicMessagesRepo.{InvNetworkMessage, Outgoing}
 import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInvForTx
 import org.encryfoundation.generator.network.NetworkServer.{CheckConnection, ConnectionSetupSuccessfully}
 import org.encryfoundation.generator.network.PeerHandler._
-import org.encryfoundation.generator.modifiers.Transaction
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.utils.Mnemonic.createPrivKey
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}

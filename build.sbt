@@ -1,47 +1,43 @@
-name         := "TransactionsGenerator"
-version      := "0.8.3"
+name := "TransactionsGenerator"
+version := "0.8.3"
 organization := "org.encryFoundation"
 
-val logbackVersion  = "1.2.3"
-val catsVersion     = "1.0.1"
-val akkaHttpVersion = "10.0.9"
-val akkaVersion     = "2.5.13"
+val akkaHttpVersion = "10.1.10"
+val akkaVersion     = "2.6.0"
 
-scalaVersion := "2.12.6"
+val catsVersion   = "2.0.0"
+val fs2Version    = "2.0.0"
+val http4sVersion = "0.20.12"
 
-val loggingDependencies = Seq(
-  "com.typesafe.scala-logging" %% "scala-logging"  % "3.9.0",
-  "ch.qos.logback"             % "logback-classic" % logbackVersion,
-  "ch.qos.logback"             % "logback-core"    % logbackVersion
-)
-
-val testingDependencies = Seq(
-  "com.typesafe.akka" %% "akka-testkit"       % "2.4.+"         % Test,
-  "com.typesafe.akka" %% "akka-http-testkit"  % akkaHttpVersion % Test,
-  "org.scalatest"     %% "scalatest"          % "3.0.3"         % Test,
-  "org.scalacheck"    %% "scalacheck"         % "1.13.+"        % Test,
-  "org.mockito"       % "mockito-core"        % "2.19.1"        % Test
-)
+scalaVersion := "2.12.10"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka"    %% "akka-http"       % akkaHttpVersion,
-  "com.typesafe.akka"    %% "akka-actor"      % akkaVersion,
-  "com.typesafe.akka"    %% "akka-stream"     % akkaVersion,
-  "org.influxdb"         % "influxdb-java"    % "2.10",
-  "com.iheart"           %% "ficus"           % "1.4.3",
-  "org.encry"            %% "encry-common"    % "0.8.9",
-  "org.typelevel"        % "cats-core_2.12"   % "1.0.1",
-  "org.typelevel"        % "cats-kernel_2.12" % "1.0.1",
-  "org.typelevel"        % "cats-macros_2.12" % "1.0.1",
-  "com.google.guava"     % "guava"            % "27.1-jre",
-  "com.thesamet.scalapb" %% "scalapb-runtime" % scalapb.compiler.Version.scalapbVersion % "protobuf",
-  "commons-net"          % "commons-net"      % "3.3"
-) ++ loggingDependencies ++ testingDependencies
+  "org.typelevel"        %% "cats-core"           % catsVersion,
+  "co.fs2"               %% "fs2-io"              % fs2Version,
+  "org.scodec"           %% "scodec-stream"       % "2.0.0",
+  "org.http4s"           %% "http4s-blaze-client" % http4sVersion,
+  "org.http4s"           %% "http4s-circe"        % http4sVersion,
+  "org.http4s"           %% "http4s-dsl"          % http4sVersion,
+  "io.chrisdavenport"    %% "log4cats-slf4j"      % "0.4.0-M2",
+ // "org.scalameta" %% "semanticdb-scalac" % "4.2.5",
+  "com.typesafe.akka"    %% "akka-http"           % akkaHttpVersion,
+  "com.typesafe.akka"    %% "akka-actor"          % akkaVersion,
+  "com.typesafe.akka"    %% "akka-stream"         % akkaVersion,
+  "org.influxdb"         % "influxdb-java"        % "2.10",
+  "com.iheart"           %% "ficus"               % "1.4.7",
+  "org.encry"            %% "encry-common"        % "0.9.2",
+  "com.google.guava"     % "guava"                % "27.1-jre",
+  "com.thesamet.scalapb" %% "scalapb-runtime"     % scalapb.compiler.Version.scalapbVersion % "protobuf",
+  "commons-net"          % "commons-net"          % "3.3"
+)
 
-scalacOptions += "-Ypartial-unification"
-
-scalacOptions += "-language:higherKinds"
-
+scalacOptions ++= List(
+  "-feature",
+  "-language:higherKinds",
+  "-Xlint",
+  "-Yrangepos"
+  //"-Ywarn-unused"
+)
 
 resolvers ++= Seq(
   "Sonatype Releases" at "https://oss.sonatype.org/content/repositories/releases/",

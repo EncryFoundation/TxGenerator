@@ -8,16 +8,16 @@ import com.typesafe.scalalogging.StrictLogging
 import io.circe.{Decoder, HCursor}
 import io.circe.parser.decode
 import org.encryfoundation.common.modifiers.mempool.transaction.PubKeyLockedContract
+import org.encryfoundation.common.modifiers.state.box.AssetBox
 import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.generator.GeneratorApp._
-import org.encryfoundation.generator.modifiers.box.Box
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 object NetworkService extends StrictLogging {
 
-  def requestUtxos(node: Node, from: Int, to: Int): Future[List[Box]] = {
+  def requestUtxos(node: Node, from: Int, to: Int): Future[List[AssetBox]] = {
     val privKey = Mnemonic.createPrivKey(Option(node.mnemonicKey))
     val contractHash: String = Algos.encode(PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract.hash)
     Http().singleRequest(HttpRequest(
@@ -26,7 +26,7 @@ object NetworkService extends StrictLogging {
     ).withEffectiveUri(securedConnection = false, Host(node.explorerHost, node.explorerPort)))
       .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
       .map(_.utf8String)
-      .map(decode[List[Box]])
+      .map(decode[List[AssetBox]])
       .flatMap(_.fold(Future.failed, Future.successful))
   }
 

@@ -3,13 +3,13 @@ package org.encryfoundation.generator.actors
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.crypto.PrivateKey25519
-import org.encryfoundation.common.modifiers.mempool.transaction.{Proof, PubKeyLockedContract}
+import org.encryfoundation.common.modifiers.mempool.transaction.{Proof, PubKeyLockedContract, Transaction}
+import org.encryfoundation.common.modifiers.state.box.{AssetBox, Box, EncryBaseBox, MonetaryBox}
 import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.generator.actors.BlockchainListener.{CheckTxMined, MultisigTxsInBlockchain}
 import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
-import org.encryfoundation.generator.modifiers.box.{AssetBox, Box, MonetaryBox}
-import org.encryfoundation.generator.modifiers.{Transaction, TransactionsFactory}
+import org.encryfoundation.generator.modifiers.TransactionsFactory
 import org.encryfoundation.generator.transaction.Contracts
 import org.encryfoundation.generator.utils.{Mnemonic, Node, Settings}
 import org.encryfoundation.prismlang.compiler.CompiledContract
@@ -47,7 +47,7 @@ class Generator(settings: Settings,
         .map(_ => Curve25519.createKeyPair(rBytes()))
         .map(pair => PrivateKey25519(pair._1, pair._2))
 
-  var multisigBoxes: Map[String, Seq[Box]] = Map.empty
+  var multisigBoxes: Map[String, Seq[EncryBaseBox]] = Map.empty
   val blockchainListener: ActorRef =
     context.actorOf(Props(classOf[BlockchainListener], settings), "blockchainListener")
 
@@ -136,7 +136,7 @@ class Generator(settings: Settings,
     }
     if (txsType == 3) {
       blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
-      multisigBoxes = multisigBoxes.updated(Algos.encode(transaction.id), transaction.newBoxes)
+      multisigBoxes = multisigBoxes.updated(Algos.encode(transaction.id), transaction.newBoxes.toSeq)
     }
     if (txsType == 4) {
       blockchainListener ! CheckTxMined(Algos.encode(transaction.id))
