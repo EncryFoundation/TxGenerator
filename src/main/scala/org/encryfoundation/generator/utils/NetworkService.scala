@@ -17,18 +17,18 @@ import scala.util.control.NonFatal
 
 object NetworkService extends StrictLogging {
 
-  def requestUtxos(node: Node, from: Int, to: Int): Future[List[AssetBox]] = {
-    val privKey = Mnemonic.createPrivKey(Option(node.mnemonicKey))
-    val contractHash: String = Algos.encode(PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract.hash)
-    Http().singleRequest(HttpRequest(
-      method = HttpMethods.GET,
-      uri = s"/wallet/$contractHash/boxes/$from/$to"
-    ).withEffectiveUri(securedConnection = false, Host(node.explorerHost, node.explorerPort)))
-      .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
-      .map(_.utf8String)
-      .map(decode[List[AssetBox]])
-      .flatMap(_.fold(Future.failed, Future.successful))
-  }
+//  def requestUtxos(node: Node, from: Int, to: Int): Future[List[AssetBox]] = {
+//    val privKey = Mnemonic.createPrivateKey(Option(node.mnemonicKey))
+//    val contractHash: String = Algos.encode(PubKeyLockedContract(privKey.publicImage.pubKeyBytes).contract.hash)
+//    Http().singleRequest(HttpRequest(
+//      method = HttpMethods.GET,
+//      uri = s"/wallet/$contractHash/boxes/$from/$to"
+//    ).withEffectiveUri(securedConnection = false, Host(node.explorerHost, node.explorerPort)))
+//      .flatMap(_.entity.dataBytes.runFold(ByteString.empty)(_ ++ _))
+//      .map(_.utf8String)
+//      .map(decode[List[AssetBox]])
+//      .flatMap(_.fold(Future.failed, Future.successful))
+//  }
 
   def checkTxsInBlockchain(node: NetworkSettings, txsToCheck: Vector[String], numberOfBlocks: Int): Future[List[String]] =
     Http().singleRequest(HttpRequest(

@@ -15,7 +15,6 @@ import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInv
 import org.encryfoundation.generator.network.NetworkServer.{CheckConnection, ConnectionSetupSuccessfully}
 import org.encryfoundation.generator.network.PeerHandler._
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
-import org.encryfoundation.generator.utils.Mnemonic.createPrivKey
 import org.encryfoundation.generator.utils.{NetworkTimeProvider, Settings}
 
 import scala.concurrent.duration._
@@ -87,11 +86,11 @@ class NetworkServer(settings: Settings,
       logger.debug(s"Send inv message to remote.")
 
     case ConnectionSetupSuccessfully =>
-      settings.peers.foreach { peer =>
-        logger.info(s"Created generator actor for ${peer.explorerHost}:${peer.explorerPort}.")
-        system.actorOf(
-          Generator.props(settings, createPrivKey(Some(peer.mnemonicKey)), peer, influx, self), peer.explorerHost)
-      }
+//      settings.peers.foreach { peer =>
+//        logger.info(s"Created generator actor for ${peer.explorerHost}:${peer.explorerPort}.")
+//        system.actorOf(
+//          Generator.props(settings, createPrivateKey(Some(peer.mnemonicKey)), peer, influx, self), peer.explorerHost)
+//      }
 
     case msg@TransactionForCommit(_) => messagesHandler ! msg
 

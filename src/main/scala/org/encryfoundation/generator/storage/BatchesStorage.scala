@@ -13,23 +13,20 @@ import cats.syntax.semigroup._
 final class BatchesStorage[F[_]: Sync] private (
   ref: Ref[F, HashMap[String, List[BoxesBatch]]],
   logger: Logger[F]
-) extends InMemoryStorage[F, BoxesBatch] {
-
-  @deprecated
-  def insert(elem: BoxesBatch): F[Unit] = insert("", elem)
+) {
 
   def insert(key: String, batch: BoxesBatch): F[Unit] =
     ref.update { storage =>
-      val updatedBatches = storage.get(key).map(batch :: _).getOrElse(List(batch))
+      val updatedBatches: List[BoxesBatch] = storage.get(key).map(batch :: _).getOrElse(List(batch))
       storage.updated(key, updatedBatches)
-    } *> logger.info(s"Batch for key $key with elems ${batch.boxes.size} inserted into storage")
+    } *> logger.info(s"Batch for key $key with ${batch.boxes.size} boxes inserted into storage")
 
   def insertMany(key: String, batches: List[BoxesBatch]): F[Unit] =
     ref.update { storage =>
       val currentBatches: List[BoxesBatch] = storage.getOrElse(key, List.empty)
       val newBatches: List[BoxesBatch]     = batches |+| currentBatches
       storage.updated(key, newBatches)
-    } *> logger.info(s"${batches.size} for key $key inserted into storage")
+    } *> logger.info(s"${batches.size} batches for key $key inserted into storage")
 
   def getMany(key: String, number: Int): F[List[BoxesBatch]] =
     ref.modify { storage =>
@@ -37,7 +34,7 @@ final class BatchesStorage[F[_]: Sync] private (
       val response: List[BoxesBatch]                  = batches.take(number)
       val newValue: HashMap[String, List[BoxesBatch]] = storage.updated(key, batches.drop(number))
       newValue -> response
-    } <* logger.info(s"Got $number batches from storage")
+    } <* logger.info(s"Took $number batches from storage")
 
   def getSizeByKey(key: String): F[Int] = ref.get.map(_.get(key).map(_.size).getOrElse(0))
 

@@ -11,7 +11,7 @@ import org.encryfoundation.generator.actors.BoxesHolder._
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
 import org.encryfoundation.generator.modifiers.TransactionsFactory
 import org.encryfoundation.generator.transaction.Contracts
-import org.encryfoundation.generator.utils.{Mnemonic, Node, Settings}
+import org.encryfoundation.generator.utils.{Node, Settings}
 import org.encryfoundation.prismlang.compiler.CompiledContract
 import org.encryfoundation.prismlang.core.wrapped.BoxedValue.MultiSignatureValue
 import scorex.crypto.hash.Blake2b256
@@ -41,7 +41,7 @@ class Generator(settings: Settings,
       settings.multisig.mnemonicKeys
         .take(3)
         .map(Some(_))
-        .map(Mnemonic.createPrivKey)
+        .map(Mnemonic.createPrivateKey)
     else
       (1 to 3)
         .map(_ => Curve25519.createKeyPair(rBytes()))
@@ -51,6 +51,9 @@ class Generator(settings: Settings,
   val blockchainListener: ActorRef =
     context.actorOf(Props(classOf[BlockchainListener], settings), "blockchainListener")
 
+  override def receive: Receive = {
+    case _ =>
+  }
   override def receive: Receive = {
     case BoxesForGenerator(boxes, txType, None) if boxes.nonEmpty =>
       generateAndSendTransaction(boxes, txType)

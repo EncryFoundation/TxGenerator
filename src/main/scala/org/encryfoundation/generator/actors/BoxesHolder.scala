@@ -84,7 +84,7 @@ class BoxesHolder(settings: Settings,
     case RequestForNewBoxesFromApi =>
       if (pool.size < settings.boxesHolderSettings.poolSize) {
         logger.info(s"Current pool size is: ${pool.size}. Asking new boxes from api!")
-        getBoxes(0, settings.boxesHolderSettings.rangeForAskingBoxes)
+        //getBoxes(0, settings.boxesHolderSettings.rangeForAskingBoxes)
       }
       else logger.info(s"Current pool is: ${pool.size}. We won't ask new boxes from api!")
   }
@@ -117,20 +117,20 @@ class BoxesHolder(settings: Settings,
     (newBoxes.values.toList, usedBoxes)
   }
 
-  def getBoxes(from: Int, to: Int): Future[Unit] =
-    NetworkService.requestUtxos(peer, from, to).map { request =>
-      logger.debug(s"Boxes from API: ${request.size}")
-      if (request.nonEmpty && to < settings.boxesHolderSettings.maxPoolSize) {
-        val newFrom: Int = from + settings.boxesHolderSettings.rangeForAskingBoxes
-        val newTo: Int = to + settings.boxesHolderSettings.rangeForAskingBoxes
-        getBoxes(newFrom, newTo)
-        logger.debug(s"Asking new boxes in range: $newFrom -> $newTo.")
-      }
-      request.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty && !bloomFilter.mightContain(Algos.encode(mb.id)) =>
-        bloomFilter.put(Algos.encode(mb.id))
-        mb
-      }
-    }.map(boxes => self ! BoxesFromApi(boxes))
+//  def getBoxes(from: Int, to: Int): Future[Unit] =
+//    NetworkService.requestUtxos(peer, from, to).map { request =>
+//      logger.debug(s"Boxes from API: ${request.size}")
+//      if (request.nonEmpty && to < settings.boxesHolderSettings.maxPoolSize) {
+//        val newFrom: Int = from + settings.boxesHolderSettings.rangeForAskingBoxes
+//        val newTo: Int = to + settings.boxesHolderSettings.rangeForAskingBoxes
+//        //getBoxes(newFrom, newTo)
+//        logger.debug(s"Asking new boxes in range: $newFrom -> $newTo.")
+//      }
+//      request.collect { case mb: AssetBox if mb.tokenIdOpt.isEmpty && !bloomFilter.mightContain(Algos.encode(mb.id)) =>
+//        bloomFilter.put(Algos.encode(mb.id))
+//        mb
+//      }
+//    }.map(boxes => self ! BoxesFromApi(boxes))
 
   def initBloomFilter: BloomFilter[String] = BloomFilter.create(
     Funnels.stringFunnel(Charsets.UTF_8),

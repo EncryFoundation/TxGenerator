@@ -1,36 +1,40 @@
-package org.encryfoundation.generator.http.api
+package org.encryfoundation.generator.processors
 
 import cats.Parallel
-import cats.effect.{ Async, ContextShift, Sync, Timer }
+import cats.effect.{Async, Sync, Timer}
+import cats.instances.list._
+import cats.instances.long._
 import cats.syntax.applicativeError._
-import org.http4s.client.Client
-import io.chrisdavenport.log4cats.Logger
-import org.encryfoundation.generator.storage.{ BatchesStorage, ContractHashStorage }
-import org.http4s.Uri
-import org.http4s.circe._
 import cats.syntax.apply._
-import fs2.Stream
-import org.encryfoundation.common.modifiers.state.box.AssetBox
 import cats.syntax.flatMap._
 import cats.syntax.functor._
-import cats.syntax.semigroup._
 import cats.syntax.parallel._
-import cats.instances.list._
+import cats.syntax.semigroup._
+import fs2.Stream
+import io.chrisdavenport.log4cats.Logger
+import org.encryfoundation.common.modifiers.state.box.AssetBox
 import org.encryfoundation.generator.actors.BoxesBatch
-import cats.instances.long._
-import scala.concurrent.ExecutionContext
+import org.encryfoundation.generator.storage.{BatchesStorage, ContractHashStorage}
+import org.http4s.Uri
+import org.http4s.circe._
+import org.http4s.client.Client
+
 import scala.concurrent.duration._
 
-final class TransactionGeneratorClient[F[_]: Async: Timer: ContextShift: Parallel](
+final class HttpApiBoxesProcessor[F[_]: Async: Timer: Parallel](
   client: Client[F],
   logger: Logger[F],
   batchesStorage: BatchesStorage[F],
   contractHashStorage: ContractHashStorage[F]
-)(implicit ec: ExecutionContext) {
+) {
 
-  def run: Stream[F, Unit] = Stream(()).repeat.covary[F].metered(1.seconds).evalMap[F, Unit](_ => requestNewBoxes)
+  def run: Stream[F, Unit] =
+    Stream(()).repeat
+      .covary[F]
+      .metered(10.seconds)
+      .evalMap[F, Unit](_ => requestNewBoxesForAllKeys)
 
-  private def requestNewBoxes: F[Unit] =
+  private def requestNewBoxesForAllKeys: F[Unit] =
     for {
       addresses <- contractHashStorage.getAllAddresses
       _         <- logger.info(s"Start processing new boxes from api. Addresses storage size is ${addresses.size}")
@@ -59,7 +63,9 @@ final class TransactionGeneratorClient[F[_]: Async: Timer: ContextShift: Paralle
             )
           else
             requestNUtxos(contractHash, to + 1, to + 11) <*
-              logger.info(s"Current batches number is $size. Need 100. Going to request more boxes")
+              logger.info(
+                s"Current batches number for key $contractHash is $size. Need 100. Going to request more boxes"
+              )
     } yield ()
 
   private def collectBatches(boxes: List[AssetBox]): F[List[BoxesBatch]] =
@@ -77,12 +83,12 @@ final class TransactionGeneratorClient[F[_]: Async: Timer: ContextShift: Paralle
 
 }
 
-object TransactionGeneratorClient {
-  def init[F[_]: Async: Timer: ContextShift: Parallel](
+object HttpApiBoxesProcessor {
+  def apply[F[_]: Async: Timer: Parallel](
     client: Client[F],
     logger: Logger[F],
     storage: BatchesStorage[F],
     contractHashStorage: ContractHashStorage[F]
-  )(implicit ec: ExecutionContext): F[TransactionGeneratorClient[F]] =
-    Sync[F].pure(new TransactionGeneratorClient[F](client, logger, storage, contractHashStorage))
+  ): F[HttpApiBoxesProcessor[F]] =
+    Sync[F].pure(new HttpApiBoxesProcessor[F](client, logger, storage, contractHashStorage))
 }
