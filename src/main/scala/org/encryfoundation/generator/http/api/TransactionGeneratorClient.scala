@@ -1,7 +1,7 @@
 package org.encryfoundation.generator.http.api
 
-import cats.{ Functor, Monad }
-import cats.effect.{ Async, Sync, Timer }
+import cats.Parallel
+import cats.effect.{ Async, ContextShift, Sync, Timer }
 import cats.syntax.applicativeError._
 import org.http4s.client.Client
 import io.chrisdavenport.log4cats.Logger
@@ -14,45 +14,29 @@ import org.encryfoundation.common.modifiers.state.box.AssetBox
 import cats.syntax.flatMap._
 import cats.syntax.functor._
 import cats.syntax.semigroup._
+import cats.syntax.parallel._
+import cats.instances.list._
 import org.encryfoundation.generator.actors.BoxesBatch
 import cats.instances.long._
-import cats.instances.list._
-import org.encryfoundation.common.crypto.PrivateKey25519
-import org.encryfoundation.common.modifiers.mempool.transaction.PubKeyLockedContract
-import org.encryfoundation.common.utils.Algos
-import org.encryfoundation.generator.utils.Mnemonic
-
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
-final class TransactionGeneratorClient[F[_]: Async: Monad: Timer](
+final class TransactionGeneratorClient[F[_]: Async: Timer: ContextShift: Parallel](
   client: Client[F],
   logger: Logger[F],
   batchesStorage: BatchesStorage[F],
   contractHashStorage: ContractHashStorage[F]
 )(implicit ec: ExecutionContext) {
 
-  val privateKey: PrivateKey25519 = Mnemonic.createPrivKey(
-    Some("boat culture ribbon wagon deposit decrease maid speak equal thunder have beauty")
-  )
-  val contractHash: String = Algos.encode(PubKeyLockedContract(privateKey.publicImage.pubKeyBytes).contract.hash)
+  def run: Stream[F, Unit] = Stream(()).repeat.covary[F].metered(1.seconds).evalMap[F, Unit](_ => requestNewBoxes)
 
-  def requestNewBoxes: Stream[F, Unit] =
+  private def requestNewBoxes: F[Unit] =
     for {
-      keys <- Stream.eval(contractHashStorage.getAllKeys)
-      _    <- Stream.eval(logger.info(s"requestNewBoxes started. Keys size ${keys.size}"))
-      _ <- Stream(()).repeat.covary[F].metered(5.seconds).evalMap[F, Unit] { _ =>
-            for {
-              _ <- logger.info(s"Start request")
-              _ <- requestNUtxos(contractHash, from = 0, to = 10)
-              _ <- logger.info("Finish boxes request")
-            } yield ()
-//            Functor[F]
-//              .compose[List]
-//              .map(contractHashStorage.getAllKeys)(key => requestNUtxos(key, from = 0, to = 10))
-//              .map(_ => ())
-          }
+      addresses <- contractHashStorage.getAllAddresses
+      _         <- logger.info(s"Start processing new boxes from api. Addresses storage size is ${addresses.size}")
+      _         <- addresses.map(address => requestNUtxos(address, 0, 10)).parSequence
     } yield ()
+
   private def requestUtxoApi(contractHash: String, from: Int, to: Int): F[List[AssetBox]] =
     client
       .expect[List[AssetBox]](
@@ -62,27 +46,17 @@ final class TransactionGeneratorClient[F[_]: Async: Monad: Timer](
         logger.error(f)("While request utxos error has occurred") *> Sync[F].pure(List.empty)
       } <* logger.info(s"Handled new boxes from http api!")
 
-  private def requestUtxoApiAsync(contractHash: String, from: Int, to: Int): F[List[AssetBox]] =
-    Async[F].async { _ =>
-      ec.execute { () =>
-        client
-          .expect[List[AssetBox]](
-            Uri.unsafeFromString(s"http://172.16.10.58:9000/wallet/$contractHash/boxes/$from/$to")
-          )(jsonOf[F, List[AssetBox]])
-          .handleErrorWith { f: Throwable =>
-            logger.error(f)("While request utxos error has occurred") *> Sync[F].pure(List.empty)
-          } <* logger.info(s"Handled new boxes from http api!")
-      }
-    }
-
   private def requestNUtxos(contractHash: String, from: Int, to: Int): F[Unit] =
     for {
-      _       <- logger.info(s"Request boxes for $contractHash")
+      _       <- logger.info(s"Start requesting boxes for $contractHash")
       boxes   <- requestUtxoApi(contractHash, from, to)
       batches <- collectBatches(boxes)
       _       <- batchesStorage.insertMany(contractHash, batches)
       size    <- batchesStorage.getSizeByKey(contractHash)
-      _ <- if (size > 100) Sync[F].unit <* logger.info(s"Current number of boxes is $size. Stop requesting new boxes")
+      _ <- if (size > 100 || boxes.isEmpty)
+            Sync[F].unit <* logger.info(
+              s"Current number of boxes is $size. Received boxes size is ${boxes.size} Stop requesting new boxes"
+            )
           else
             requestNUtxos(contractHash, to + 1, to + 11) <*
               logger.info(s"Current batches number is $size. Need 100. Going to request more boxes")
@@ -104,7 +78,7 @@ final class TransactionGeneratorClient[F[_]: Async: Monad: Timer](
 }
 
 object TransactionGeneratorClient {
-  def init[F[_]: Sync: Async: Timer](
+  def init[F[_]: Async: Timer: ContextShift: Parallel](
     client: Client[F],
     logger: Logger[F],
     storage: BatchesStorage[F],

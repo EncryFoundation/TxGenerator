@@ -6,4 +6,5 @@ final case class BoxesBatch(boxes: List[AssetBox])
 
 object BoxesBatch {
   def empty: BoxesBatch = BoxesBatch(List.empty[AssetBox])
+
 }

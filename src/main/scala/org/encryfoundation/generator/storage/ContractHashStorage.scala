@@ -3,7 +3,6 @@ package org.encryfoundation.generator.storage
 import cats.Apply
 import cats.syntax.functor._
 import cats.syntax.apply._
-import cats.syntax.flatMap._
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import io.chrisdavenport.log4cats.Logger
@@ -20,15 +19,19 @@ final class ContractHashStorage[F[_]: Apply] private (
 
   def clean: F[Unit] = ref.set(List.empty[String])
 
-  def getAllKeys: F[List[String]] = ref.get <* logger.info("Called getAllKeys function")
+  def getAllAddresses: F[List[String]] = ref.get <* logger.info("Called getAllKeys function")
 
   def init: F[Unit] =
     ref.set {
       val privateKey: PrivateKey25519 = Mnemonic.createPrivKey(
         Some("boat culture ribbon wagon deposit decrease maid speak equal thunder have beauty")
       )
-      val contractHash: String = Algos.encode(PubKeyLockedContract(privateKey.publicImage.pubKeyBytes).contract.hash)
-      List(contractHash)
+      val privateKey2: PrivateKey25519 = Mnemonic.createPrivKey(
+        Some("napkin they pyramid verb modify brave hurry agent will still easy great")
+      )
+      val contractHash: String  = Algos.encode(PubKeyLockedContract(privateKey.publicImage.pubKeyBytes).contract.hash)
+      val contractHash2: String = Algos.encode(PubKeyLockedContract(privateKey2.publicImage.pubKeyBytes).contract.hash)
+      List(contractHash, contractHash2)
     } *> logger.info("Init keys collection")
 }
 
