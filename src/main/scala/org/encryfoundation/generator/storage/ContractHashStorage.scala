@@ -18,32 +18,39 @@ final class ContractHashStorage[F[_]: Apply: Sync] private (
   ref: Ref[F, List[String]]
 ) extends InMemoryStorage[F, String] {
 
-  def generateNewContactHash(mnemonic: String): F[Unit] =
+  def createNewContactHash(mnemonic: String): F[Unit] =
     for {
       elem <- createContractHash(mnemonic)
       _    <- insert(elem)
     } yield ()
 
   def insert(elem: String): F[Unit] =
-    ref.update(elem :: _) <* logger.info("Inserted new element into contract hash storage")
+    ref.update(elem :: _) <*
+      logger.info("Inserted new element into contract hash storage")
 
-  def clean: F[Unit] = ref.set(List.empty[String]) <* logger.info("Contract hash storage cleaned up")
+  def clean: F[Unit] =
+    ref.set(List.empty[String]) <*
+      logger.info("Contract hash storage cleaned up")
 
-  def getAllAddresses: F[List[String]] = ref.get <* logger.info("Received all addresses from storage")
+  def getAllElements: F[List[String]] =
+    ref.get <*
+      logger.info("Received all addresses from contract hash storage")
 
   def init: F[Unit] =
     (for {
-      _ <- generateNewContactHash(
+      _ <- createNewContactHash(
             mnemonic = "boat culture ribbon wagon deposit decrease maid speak equal thunder have beauty"
           )
-      _ <- generateNewContactHash(mnemonic = "napkin they pyramid verb modify brave hurry agent will still easy great")
-    } yield ()) *> logger.info("Init keys collection")
+      _ <- createNewContactHash(
+            mnemonic = "napkin they pyramid verb modify brave hurry agent will still easy great"
+          )
+    } yield ()) *> logger.info("Init contract hash storage")
 
   private def createContractHash(mnemonic: String): F[String] = {
     val (privateKey: PrivateKey, publicKey: PublicKey) =
       Curve25519.createKeyPair(Blake2b256.hash(Algos.hash(mnemonic + "mnemonic=")))
     val privateKey25519: PrivateKey25519 = PrivateKey25519(privateKey, publicKey)
-    Sync[F].delay(Algos.encode(PubKeyLockedContract(privateKey25519.publicImage.pubKeyBytes).contract.hash))
+    Sync[F].pure(Algos.encode(PubKeyLockedContract(privateKey25519.publicImage.pubKeyBytes).contract.hash))
   }
 }
 

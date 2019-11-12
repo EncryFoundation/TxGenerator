@@ -1,12 +1,12 @@
 package org.encryfoundation.generator
 
-import cats.effect.{ExitCode, IO, IOApp}
+import cats.effect.{ ExitCode, IO, IOApp }
 import fs2.Stream
 import cats.syntax.functor._
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
-import org.encryfoundation.generator.processors.{HttpApiBoxesProcessor, TransactionGenerator}
+import org.encryfoundation.generator.processors.{ HttpApiBoxesProcessor, TransactionGenerator }
 import org.http4s.client.blaze.BlazeClientBuilder
-import org.encryfoundation.generator.storage.{BatchesStorage, ContractHashStorage, TransactionsStorage}
+import org.encryfoundation.generator.storage.{ BatchesStorage, ContractHashStorage, TransactionsStorage }
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Http4sApp extends IOApp {

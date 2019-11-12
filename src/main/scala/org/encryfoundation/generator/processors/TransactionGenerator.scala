@@ -29,7 +29,7 @@ final class TransactionGenerator[F[_]: Async: Parallel: Timer] private (
   private def createNewTransaction: F[Unit] =
     for {
       _    <- logger.info("Init createNewTransaction function")
-      keys <- contractHashStorage.getAllAddresses
+      keys <- contractHashStorage.getAllElements
       _    <- keys.map(key => processBatch(key)).parSequence
     } yield ()
 
@@ -40,10 +40,10 @@ final class TransactionGenerator[F[_]: Async: Parallel: Timer] private (
       _     <- logger.info(s"Got ${batch.size} batches from storage")
     } yield ()
 
-  private def createNewTransaction(batch: BoxesBatch) =
-    for {
-
-    }
+//  private def createNewTransaction(batch: BoxesBatch) =
+//    for {
+//
+//    }
 }
 
 object TransactionGenerator {
