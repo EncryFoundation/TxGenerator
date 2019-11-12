@@ -2,11 +2,11 @@ package org.encryfoundation.generator.network
 
 import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
+import org.encryfoundation.common.modifiers.mempool.transaction.{Transaction, TransactionProtoSerializer}
 import org.encryfoundation.common.utils.Algos
 import org.encryfoundation.generator.actors.Generator.TransactionForCommit
 import org.encryfoundation.generator.network.BasicMessagesRepo._
 import org.encryfoundation.generator.network.NetworkMessagesHandler.BroadcastInvForTx
-import org.encryfoundation.generator.modifiers.{Transaction, TransactionProtoSerializer}
 import org.encryfoundation.generator.utils.CoreTaggedTypes.{ModifierId, ModifierTypeId}
 import org.encryfoundation.generator.utils.{CoreTaggedTypes, Settings}
 import supertagged.@@

@@ -3,13 +3,13 @@ package org.encryfoundation.generator.modifiers
 import com.google.common.primitives.{Bytes, Longs}
 import com.typesafe.scalalogging.StrictLogging
 import org.encryfoundation.common.crypto.{PrivateKey25519, PublicKey25519, Signature25519}
-import org.encryfoundation.common.modifiers.mempool.transaction.{Input, Proof, PubKeyLockedContract}
+import org.encryfoundation.common.modifiers.mempool.directive.{AssetIssuingDirective, DataDirective, Directive, ScriptedAssetDirective, TransferDirective}
+import org.encryfoundation.common.modifiers.mempool.transaction.{Input, Proof, PubKeyLockedContract, Transaction}
+import org.encryfoundation.common.modifiers.state.box.MonetaryBox
 import org.encryfoundation.prismlang.compiler.CompiledContract
 import org.encryfoundation.prismlang.core.wrapped.BoxedValue
 import scorex.crypto.hash.{Blake2b256, Digest32}
-import org.encryfoundation.generator.modifiers.directives._
 import org.encryfoundation.common.utils.TaggedTypes.ADKey
-import org.encryfoundation.generator.modifiers.box.MonetaryBox
 
 import scala.util.Random
 
